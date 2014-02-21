@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+
+def add_prefix_to_path(pkg_path=None):
+    """Assuming the containing script is in $prefix/bin.  Given no args,
+       adds $prefix to PYTHONPATH.  Given a prefix-relative path, adds
+       $prefix/relative/path to PYTHONPATH."""
+    my_file = os.path.realpath(os.path.expanduser(__file__))
+    prefix = os.path.dirname(os.path.dirname(my_file))
+    if pkg_path:
+        prefix = os.path.join(prefix, pkg_path)
+    sys.path.insert(0, prefix)
+
+
+def check_python_version(version_tuple):
+    """Die if the python version isn't newer than version_tuple"""
+    if not sys.version_info[:2] >= version_tuple:
+        sys.exit("This script requires Python %s.  Version was %s."
+                 % (sys.version_info, '.'.join(version_tuple)))
+
+
+import sys
+import os
+check_python_version((2,7))
+add_prefix_to_path()
+
+import cram
+import argparse
+
+# Command parsing
+parser = argparse.ArgumentParser(
+    description='cram: Crams small MPI jobs into a single large one.')
+
+# each command module implements a parser() function, to which we pass its
+# subparser for setup.
+subparsers = parser.add_subparsers(metavar='SUBCOMMAND', dest="subcommand")
+
+import cram.cmd
+for cmd in cram.cmd.commands:
+    module = cram.cmd.get_module(cmd)
+    subparser = subparsers.add_parser(cmd, help=module.description)
+    module.setup_parser(subparser)
+args = parser.parse_args()
+
+# Try to load the particular command asked for and run it
+subcommand = cram.cmd.get_command(args.subcommand)
+try:
+    subcommand(parser, args)
+except KeyboardInterrupt:
+    print "Got a keyboard interrupt from the user."
+    sys.exit(1)
