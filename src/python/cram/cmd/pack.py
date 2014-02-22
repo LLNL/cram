@@ -1,6 +1,5 @@
 import argparse
-
-from cram.util import die
+import llnl.util.tty as tty
 
 description = "Pack a command invocation into a cramfile"
 
@@ -15,4 +14,6 @@ def setup_parser(subparser):
 
 def pack(parser, args):
     if not args.command:
-        die("You must supply a command line to car pack.")
+        tty.error("You must supply a command line to cram pack.")
+
+

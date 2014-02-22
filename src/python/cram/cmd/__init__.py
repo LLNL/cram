@@ -1,4 +1,5 @@
-from cram.util import *
+from llnl.util.lang import *
+from llnl.util.filesystem import ancestor
 
 commands = sorted(list_modules(ancestor(__file__)))
 SETUP_PARSER = "setup_parser"

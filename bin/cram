@@ -21,7 +21,7 @@ def check_python_version(version_tuple):
 import sys
 import os
 check_python_version((2,7))
-add_prefix_to_path()
+add_prefix_to_path('src/python')
 
 import cram
 import argparse
