@@ -7,6 +7,8 @@ from contextlib import contextmanager, closing
 import cram.cramfile as cramfile
 from cram.cramfile import CramFile, Job
 
+many_jobs = 4096
+
 @contextmanager
 def tempfile():
     tmp = mktemp('.tmp', 'cramfile-test-')
@@ -65,9 +67,11 @@ class CramFileTest(unittest.TestCase):
             with closing(CramFile(tmp, mode)) as cf:
                 cf.append(Job(num_procs, working_dir, args, env))
                 self.assertEqual(cf.num_jobs, 1)
+                self.assertEqual(cf.num_procs, 64)
 
             with closing(CramFile(tmp, 'r')) as cf:
                 self.assertEqual(cf.num_jobs, 1)
+                self.assertEqual(cf.num_procs, 64)
 
                 job = cf[0]
                 self.assertEqual(num_procs,   job.num_procs)
@@ -85,24 +89,32 @@ class CramFileTest(unittest.TestCase):
 
 
     def test_write_a_lot(self):
-        jobs = random_jobs(4096)
+        jobs = random_jobs(many_jobs)
+        total_procs = 0
 
         with tempfile() as tmp:
             with closing(CramFile(tmp, 'w')) as cf:
                 for job in jobs:
                     cf.append(job)
+                    total_procs += job.num_procs
 
             with closing(CramFile(tmp, 'r')) as cf:
+                self.assertEqual(many_jobs, cf.num_jobs)
+                self.assertEqual(total_procs, cf.num_procs)
                 self.assertListEqual(jobs, [j for j in cf])
 
 
     def test_append_a_lot(self):
-        jobs = random_jobs(4096)
+        jobs = random_jobs(many_jobs)
+        total_procs = 0
 
         with tempfile() as tmp:
             for job in jobs:
                 with closing(CramFile(tmp, 'a')) as cf:
                     cf.append(job)
+                total_procs += job.num_procs
 
             with closing(CramFile(tmp, 'r')) as cf:
+                self.assertEqual(many_jobs, cf.num_jobs)
+                self.assertEqual(total_procs, cf.num_procs)
                 self.assertListEqual(jobs, [j for j in cf])

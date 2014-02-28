@@ -83,6 +83,13 @@ _magic = 0x6372616d
 # Increment this when the binary format changes (hopefully infrequent)
 _version = 1
 
+# Offsets of file header fields
+_magic_offset   = 0
+_version_offset = 4
+_njobs_offset   = 8
+_nprocs_offset  = 12
+
+
 @contextmanager
 def save_position(stream):
     """Context for doing something while saving the current position in a
@@ -169,9 +176,10 @@ class CramFile(object):
 
         elif mode == 'w' or (mode == 'a' and not os.path.exists(filename)):
             self.stream = open(filename, 'wb')
-            self._write_header()
             self.version = _version
             self.num_jobs = 0
+            self.num_procs = 0
+            self._write_header()
 
         elif mode == 'a':
             self.stream = open(filename, 'rb+')
@@ -196,6 +204,7 @@ class CramFile(object):
                 % (self.version, _version))
 
         self.num_jobs = read_int(self.stream, 4)
+        self.num_procs = read_int(self.stream, 4)
 
         # read in the first job automatically if it is there, since
         # it is used for compression of subsequent jobs.
@@ -207,8 +216,9 @@ class CramFile(object):
         """Jump to the beginning of the file and write the header."""
         self.stream.seek(0)
         write_int(self.stream, _magic, 4)
-        write_int(self.stream, _version, 4)
-        write_int(self.stream, 0, 4)
+        write_int(self.stream, self.version, 4)
+        write_int(self.stream, self.num_jobs, 4)
+        write_int(self.stream, self.num_procs, 4)
 
 
     def append(self, job):
@@ -244,8 +254,12 @@ class CramFile(object):
 
         with save_position(self.stream):
             self.num_jobs += 1
-            self.stream.seek(8)
+            self.stream.seek(_njobs_offset)
             write_int(self.stream, self.num_jobs, 4)
+
+            self.num_procs += job.num_procs
+            self.stream.seek(_nprocs_offset)
+            write_int(self.stream, self.num_procs, 4)
 
         self.jobs.append(job)
 
