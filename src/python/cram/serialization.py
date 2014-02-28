@@ -7,17 +7,23 @@ import struct
 import array
 
 # Use big endian, unsigned long long
-_int_format = '>Q'
+_default_int_format = '>I'
+_int_sizes = { 1 : '>B', 2 : '>H', 4 : '>I', 8 : '>Q' }
 
-def write_int(stream, integer):
-    packed = struct.pack(_int_format, integer)
+
+def write_int(stream, integer, fmt=_default_int_format):
+    if isinstance(fmt, int):
+        fmt = _int_sizes[fmt]
+    packed = struct.pack(fmt, integer)
     stream.write(packed)
 
 
-def read_int(stream):
-    size = struct.calcsize(_int_format)
+def read_int(stream, fmt=_default_int_format):
+    if isinstance(fmt, int):
+        fmt = _int_sizes[fmt]
+    size = struct.calcsize(fmt)
     packed = stream.read(size)
-    return struct.unpack(_int_format, packed)[0]
+    return struct.unpack(fmt, packed)[0]
 
 
 def write_string(stream, string):
@@ -26,6 +32,6 @@ def write_string(stream, string):
     stream.write(string)
 
 
-def read_string(stream, string):
+def read_string(stream):
     length = read_int(stream)
     return stream.read(length)

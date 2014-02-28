@@ -7,7 +7,8 @@ import llnl.util.tty as tty
 _test_module = 'cram.test'
 
 # Names of tests to be included in the test suite
-_test_names = ['serialization']
+_test_names = ['serialization',
+               'cramfile']
 
 
 def list_tests():
@@ -35,7 +36,7 @@ def run(names, verbose=False):
     testsRun = errors = failures = skipped = 0
     for test in names:
         module = 'cram.test.' + test
-        print module
+        print module, test
         suite = unittest.defaultTestLoader.loadTestsFromName(module)
 
         tty.msg("Running test: %s" % test)

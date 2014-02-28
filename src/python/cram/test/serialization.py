@@ -9,23 +9,27 @@ from cram.serialization import *
 class SerializationTest(unittest.TestCase):
 
     def test_integers(self):
-        """Test writing and reading integers from a stream."""
+        """Test writing and reading integers of different sizes from a
+           stream."""
         stream = StringIO()
+        sizes = [1, 2, 4, 8]
 
-        i = 2
-        while i < sys.maxint:
-            write_int(stream, i)
-            write_int(stream, i + 1)
-            write_int(stream, i - 1)
-            i **= 2
+        for size in sizes:
+            i = 2
+            while i < (2**(size*8) - 1):
+                write_int(stream, i, 8)
+                write_int(stream, i + 1, 8)
+                write_int(stream, i - 1, 8)
+                i **= 2
 
         stream = StringIO(stream.getvalue())
-        i = 2
-        while i < sys.maxint:
-            self.assertEqual(read_int(stream), i)
-            self.assertEqual(read_int(stream), i + 1)
-            self.assertEqual(read_int(stream), i - 1)
-            i **= 2
+        for size in sizes:
+            i = 2
+            while i < (2**(size*8) - 1):
+                self.assertEqual(read_int(stream, 8), i)
+                self.assertEqual(read_int(stream, 8), i + 1)
+                self.assertEqual(read_int(stream, 8), i - 1)
+                i **= 2
 
 
     def test_strings(self):
@@ -46,6 +50,4 @@ class SerializationTest(unittest.TestCase):
         stream = StringIO(stream.getvalue())
 
         for s in strings:
-            self.assertEqual(read_string(stream, s), s)
-
-
+            self.assertEqual(read_string(stream), s)
