@@ -23,6 +23,8 @@ def read_int(stream, fmt=_default_int_format):
         fmt = _int_sizes[fmt]
     size = struct.calcsize(fmt)
     packed = stream.read(size)
+    if len(packed) < size:
+        raise IOError("Premature end of file")
     return struct.unpack(fmt, packed)[0]
 
 
@@ -34,4 +36,7 @@ def write_string(stream, string):
 
 def read_string(stream):
     length = read_int(stream)
-    return stream.read(length)
+    string = stream.read(length)
+    if len(string) < length:
+        raise IOError("Premature end of file")
+    return string

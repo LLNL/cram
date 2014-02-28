@@ -69,9 +69,13 @@ int(8)       # of jobs
 ========================================================================
 
 """
+import os
+
 from collections import defaultdict
-from contextlib import contextmanager
+from contextlib import contextmanager, closing
+
 from cram.serialization import *
+import llnl.util.tty as tty
 
 # Magic number goes at beginning of file.
 _magic = 0x6372616d
@@ -149,9 +153,6 @@ class CramFile(object):
            Opening a CramFile for writing will create a file with a
            simple header containing no jobs.
         """
-        # Open file stream.
-        self.stream = open(filename, mode)
-
         # Jobs read in from the file.
         self.jobs = []
 
@@ -160,16 +161,22 @@ class CramFile(object):
             raise ValueError("Mode must be 'r', 'w', or 'a'.")
 
         if mode == 'r':
+            if not os.path.exists(filename) or os.path.isdir(filename):
+                tty.die("No such file: %s" % filename)
+
+            self.stream = open(filename, 'rb')
             self._read_header()
 
-        elif mode == 'w':
+        elif mode == 'w' or (mode == 'a' and not os.path.exists(filename)):
+            self.stream = open(filename, 'wb')
             self._write_header()
             self.version = _version
             self.num_jobs = 0
 
         elif mode == 'a':
-            with save_position(self.stream):
-                self._read_header()
+            self.stream = open(filename, 'rb+')
+            self._read_header()
+            self.stream.seek(0, os.SEEK_END)
 
 
     def _read_header(self):
@@ -251,9 +258,6 @@ class CramFile(object):
            that isn't already in memory.  Client code should use
            len(), [], or iterate to read jobs from CramFiles.
         """
-        if self.mode != 'r':
-            raise IOError("Cannot read from CramFile opened for writing.")
-
         num_procs   = read_int(self.stream, 8)
         working_dir = read_string(self.stream)
 
@@ -283,14 +287,10 @@ class CramFile(object):
 
     def __getitem__(self, index):
         """Return the index-th job stored in this CramFile."""
-        if self.mode != 'r':
-            raise IOError("Cannot index CramFile opened for writing.")
-
-        if index not in range(self.num_jobs):
-            raise IndexError("Index out of range: %d" % index)
-
-        while len(self.jobs) < index:
-            self._read_job()
+        if self.mode == 'r':
+            while (len(self.jobs) < index and
+                   len(self.jobs) < self.num_jobs):
+                self._read_job()
 
         return self.jobs[index]
 
