@@ -6,9 +6,14 @@ ready by the cram backend.
 import struct
 import array
 
-# Use big endian, unsigned long long
+# Int formats from struct module.
+_int_sizes = { 1 : '>B',
+               2 : '>H',
+               4 : '>I',
+               8 : '>Q' }
+
+# Use big endian, 32-bit unsigned int
 _default_int_format = '>I'
-_int_sizes = { 1 : '>B', 2 : '>H', 4 : '>I', 8 : '>Q' }
 
 
 def write_int(stream, integer, fmt=_default_int_format):

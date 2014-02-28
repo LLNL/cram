@@ -51,12 +51,13 @@ Header
 ------------------------------------------------------------------------
 int(4)       0x6372616d ('cram')
 int(4)       Version
-int(8)       # of jobs
+int(4)       # of jobs
+int(4)       # of processes
 
 * Job records
 ------------------------------------------------------------------------
   str        Working dir
-  int(8)     Number of processes
+  int(4)     Number of processes
 
   int(4)     Number of command line arguments
    * str       Value of arg
@@ -67,7 +68,6 @@ int(8)       # of jobs
    *  str      Name
    *  str      Value
 ========================================================================
-
 """
 import os
 
@@ -195,7 +195,7 @@ class CramFile(object):
                 "Version mismatch: File has version %s, but this is version %s"
                 % (self.version, _version))
 
-        self.num_jobs = read_int(self.stream, 8)
+        self.num_jobs = read_int(self.stream, 4)
 
         # read in the first job automatically if it is there, since
         # it is used for compression of subsequent jobs.
@@ -208,7 +208,7 @@ class CramFile(object):
         self.stream.seek(0)
         write_int(self.stream, _magic, 4)
         write_int(self.stream, _version, 4)
-        write_int(self.stream, 0, 8)
+        write_int(self.stream, 0, 4)
 
 
     def append(self, job):
@@ -218,7 +218,7 @@ class CramFile(object):
             raise IOError("Cannot append to CramFile opened for reading.")
 
         # Number of processes
-        write_int(self.stream, job.num_procs, 8)
+        write_int(self.stream, job.num_procs, 4)
 
         # Working directory
         write_string(self.stream, job.working_dir)
@@ -245,7 +245,7 @@ class CramFile(object):
         with save_position(self.stream):
             self.num_jobs += 1
             self.stream.seek(8)
-            write_int(self.stream, self.num_jobs, 8)
+            write_int(self.stream, self.num_jobs, 4)
 
         self.jobs.append(job)
 
@@ -258,7 +258,7 @@ class CramFile(object):
            that isn't already in memory.  Client code should use
            len(), [], or iterate to read jobs from CramFiles.
         """
-        num_procs   = read_int(self.stream, 8)
+        num_procs   = read_int(self.stream, 4)
         working_dir = read_string(self.stream)
 
         num_args    = read_int(self.stream, 4)
