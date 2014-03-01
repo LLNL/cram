@@ -56,17 +56,19 @@ int(4)       # of processes
 
 * Job records
 ------------------------------------------------------------------------
-  str        Working dir
   int(4)     Number of processes
+  str        Working dir
 
   int(4)     Number of command line arguments
-   * str       Value of arg
+   * str       Command line arguments, in original order
 
   int(4)     Number of subtracted env var names (0 for first record)
-   * str       Name
+   * str       Subtracted env vars in sorted order.
   int(4)     Number of added or changed env vars
-   *  str      Name
-   *  str      Value
+   *  str      Names of added/changed var
+   *  str      Corresponding value
+
+Env vars are stored alternating keys and values, in sorted order by key.
 ========================================================================
 """
 import os
@@ -242,21 +244,24 @@ class CramFile(object):
         missing, changed = compress(
             self.jobs[0].env if self.jobs else {}, job.env)
 
-        # subtracted env var names
+        # Subtracted env var names
         write_int(self.stream, len(missing), 4)
-        for key in missing:
+        for key in sorted(missing):
             write_string(self.stream, key)
 
+        # Changed environment variables
         write_int(self.stream, len(changed), 4)
-        for key, value in changed.iteritems():
+        for key in sorted(changed.keys()):
             write_string(self.stream, key)
-            write_string(self.stream, value)
+            write_string(self.stream, changed[key])
 
         with save_position(self.stream):
+            # Update total number of jobs in file.
             self.num_jobs += 1
             self.stream.seek(_njobs_offset)
             write_int(self.stream, self.num_jobs, 4)
 
+            # Update total number of processes in all jobs.
             self.num_procs += job.num_procs
             self.stream.seek(_nprocs_offset)
             write_int(self.stream, self.num_procs, 4)
@@ -272,19 +277,25 @@ class CramFile(object):
            that isn't already in memory.  Client code should use
            len(), [], or iterate to read jobs from CramFiles.
         """
+        # Number of processes
         num_procs   = read_int(self.stream, 4)
+
+        # Working directory
         working_dir = read_string(self.stream)
 
+        # Command line arguments
         num_args    = read_int(self.stream, 4)
         args        = []
         for i in xrange(num_args):
             args.append(read_string(self.stream))
 
+        # Subtracted environment variables
         num_missing = read_int(self.stream, 4)
         missing     = []
         for i in xrange(num_missing):
             missing.append(read_string(self.stream))
 
+        # Changed environment variables
         num_changed = read_int(self.stream, 4)
         changed = {}
         for i in xrange(num_changed):
@@ -292,6 +303,7 @@ class CramFile(object):
             val = read_string(self.stream)
             changed[key] = val
 
+        # Decompress using first dictionary
         env = decompress(self.jobs[0].env if self.jobs else {},
                          missing, changed)
 
