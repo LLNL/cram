@@ -1,0 +1,11 @@
+#c tools/infrastructure
+#d Cram 1.0a1
+
+#h Cram launches many small MPI jobs as one large one.
+#h
+#h https://lc.llnl.gov/stash/projects/SCALE/repos/cram
+
+dk_setenv CRAM_HOME        @CMAKE_INSTALL_PREFIX@
+
+dk_alter  PATH             $CRAM_HOME/bin
+dk_alter  LD_LIBRARY_PATH  $CRAM_HOME/lib
