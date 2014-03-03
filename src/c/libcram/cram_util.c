@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include "cram_util.h"
 
 void free_string_array(int num_elts, const char **arr) {
@@ -7,3 +8,4 @@ void free_string_array(int num_elts, const char **arr) {
   }
   free(arr);
 }
+

@@ -1,6 +1,15 @@
 project(Cram C)
 cmake_minimum_required(VERSION 2.8)
 
+# Use C99
+if (CMAKE_C_COMPILER_ID STREQUAL "XL")
+  # XL compilers are different
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -qlanglvl=extc99")
+else()
+  # clang, gcc, and icc all use this arg.
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
+endif()
+
 # Required dependencies
 find_package(MPI REQUIRED)
 find_package(PythonInterp REQUIRED)

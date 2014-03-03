@@ -13,9 +13,9 @@ set(BGQ_XL_COMPILER_SEARCH_PATHS
   /opt/ibmcmp/xlf/bg/14.1/bin)
 
 # XL C Compilers
-find_program(CMAKE_C_COMPILER       bgxlc      ${BGQ_XL_COMPILER_SEARCH_PATHS})
-find_program(CMAKE_CXX_COMPILER     bgxlc      ${BGQ_XL_COMPILER_SEARCH_PATHS})
-find_program(CMAKE_Fortran_COMPILER bgxlf90    ${BGQ_XL_COMPILER_SEARCH_PATHS})
+find_program(CMAKE_C_COMPILER       bgxlc_r      ${BGQ_XL_COMPILER_SEARCH_PATHS})
+find_program(CMAKE_CXX_COMPILER     bgxlc_r      ${BGQ_XL_COMPILER_SEARCH_PATHS})
+find_program(CMAKE_Fortran_COMPILER bgxlf90_r    ${BGQ_XL_COMPILER_SEARCH_PATHS})
 
 # Make sure MPI_COMPILER wrapper matches the gnu compilers.
 # Prefer local machine wrappers to driver wrappers here too.

@@ -18,6 +18,11 @@ if [ -z "$cram_cat" -o -z "$cram" ]; then
     exit 1
 fi
 
+bgq_run=''
+if [ "$SYS_TYPE" = "bgqos_0" ]; then
+    bgq_run='srun -n 1 -ppdebug'
+fi
+
 # Clean up old stale test data if necessary
 rm -f cram-info.txt cram-cat.txt test-cram.job
 
@@ -41,7 +46,7 @@ export TEST_VAR2
 cram pack -f test-cram.job -n 35 foo
 
 cram info -a test-cram.job > cram-info.txt
-cram-cat test-cram.job > cram-cat.txt
+$bgq_run cram-cat test-cram.job > cram-cat.txt
 
 diff=$(diff cram-info.txt cram-cat.txt)
 if [ ! -z "$diff" ]; then

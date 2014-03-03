@@ -3,10 +3,11 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <string.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <arpa/inet.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include "cram_file.h"
 #include "cram_serialization.h"
@@ -26,15 +27,35 @@
 
 bool cram_file_map(const char *filename, cram_file_t *file) {
   file->fd = open(filename, O_RDONLY);
+  if (file->fd < 0) {
+    return false;
+  }
 
   struct stat status;
   fstat(file->fd, &status);
   file->bytes = status.st_size;
 
-  file->data = mmap(NULL, file->bytes, PROT_READ, MAP_SHARED, file->fd, 0);
+#ifdef __bgq__
+  file->data = malloc(file->bytes);
+  char *pos = file->data;
+  ssize_t bytes_read = 0;
+  while (bytes_read < file->bytes) {
+    ssize_t bytes = read(file->fd, pos, file->bytes);
+    if (bytes < 0) {
+      return false;
+    }
+    bytes_read += bytes;
+    pos += bytes;
+  }
+  file->mapped = false;
+
+#else
+  file->data = mmap(NULL, file->bytes, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, 0);
   if (file->data == MAP_FAILED) {
     return false;
   }
+  file->mapped = true;
+#endif
 
   int magic = cram_read_int(file, MAGIC_OFFSET);
   if (magic != MAGIC) {
@@ -45,7 +66,6 @@ bool cram_file_map(const char *filename, cram_file_t *file) {
   file->num_jobs    = cram_read_int(file, NJOBS_OFFSET);
   file->total_procs = cram_read_int(file, NPROCS_OFFSET);
 
-  file->mapped = true;
   return true;
 }
 
@@ -99,10 +119,9 @@ void cram_file_close(const cram_file_t *file) {
 
 
 int cram_file_find_job(const cram_file_t *file, int rank, cram_job_t *job) {
+  // Check whether we really need this rank to run all of our jobs.
   if (rank >= file->total_procs) {
-    fprintf(stderr, "rank passed to cram_file_find_job is greater than total "
-            "number of processes in this job!\n");
-    PMPI_Abort(MPI_COMM_WORLD, 1);
+    return -1;
   }
 
   // Skip through job records until we come to the one for this rank.
