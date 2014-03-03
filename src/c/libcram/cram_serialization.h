@@ -1,7 +1,7 @@
 #ifndef cram_serialization_h
 #define cram_serialization_h
 
-#include "cram_defs.h"
+#include "cram_util.h"
 struct cram_file_t;
 struct cram_job_t;
 

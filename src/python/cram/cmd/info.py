@@ -17,10 +17,10 @@ def setup_parser(subparser):
 
 
 def write_header(args, cf):
-    print "Name:         %12s" % args.cramfile
-    print "# Jobs:       %12d" % cf.num_jobs
-    print "Total Procs:  %12d" % cf.num_procs
-    print "Cram version: %12d" % cf.version
+    print "Name:%25s"              % args.cramfile
+    print "Number of Jobs:   %12d" % cf.num_jobs
+    print "Total Procs:      %12d" % cf.num_procs
+    print "Cram version:     %12d" % cf.version
 
 
 def write_job_summary(args, cf):
@@ -34,9 +34,9 @@ def write_job_info(job):
     print "  Working dir: %s" % job.working_dir
     print "  Arguments:"
     print "      " + ' '.join(job.args)
-    print "  Environment: "
-    for key, val in job.env.iteritems():
-        print "      '%s' : '%s'" % (key, val)
+    print "  Environment:"
+    for key in sorted(job.env):
+        print "      '%s' : '%s'" % (key, job.env[key])
 
 
 def info(parser, args):
@@ -46,6 +46,7 @@ def info(parser, args):
     with closing(CramFile(args.cramfile, 'r')) as cf:
         if args.all:
             write_header(args, cf)
+            print
             print "Job information:"
             for i, job in enumerate(cf):
                 print "Job %d:" % i

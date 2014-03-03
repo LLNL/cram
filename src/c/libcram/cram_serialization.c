@@ -89,10 +89,15 @@ static inline void decompress(const cram_job_t *base,
   job->values = malloc(job->num_env_vars * sizeof(const char*));
 
   // Merge base and changed values into job, removing missing keys.
-  // These arrays are sorted, so we can just march through them.
+  // These arrays are assumed to be sorted, so we can march through
+  // them in O(n) time.
   size_t bx=0, cx=0, mx=0, jx=0;
   while (jx < job->num_env_vars) {
-    int cmp = strcmp(base->keys[bx], changed_keys[cx]);
+    int cmp = -1;
+    if (cx < num_changed) {
+      cmp = strcmp(base->keys[bx], changed_keys[cx]);
+    }
+
     if (cmp == 0) {
       // base & changed are the same, take the changed value and skip base.
       job->keys[jx]   = strdup(changed_keys[cx]);
@@ -100,7 +105,7 @@ static inline void decompress(const cram_job_t *base,
       bx++; cx++; jx++;
 
     } else if (cmp < 0) {
-      if (strcmp(base->keys[bx], missing[mx]) == 0) {
+      if (mx < num_missing && strcmp(base->keys[bx], missing[mx]) == 0) {
         // This key is missing in job; skip it.
         bx++; mx++;
 
@@ -147,7 +152,7 @@ void cram_read_job(const cram_file_t *file, size_t offset,
   int num_subtracted = cram_read_int(file, offset);
   cram_skip_int(file, &offset);
 
-  const char **subtracted_env_vars = malloc(num_subtracted * sizeof(const char*));
+  const char **subtracted_env_vars = NULL;
   if (num_subtracted) {
     // If there is no base job, then there can't be any subtracted vars.
     if (!base) {
@@ -155,6 +160,7 @@ void cram_read_job(const cram_file_t *file, size_t offset,
       PMPI_Abort(MPI_COMM_WORLD, 1);
     }
 
+    subtracted_env_vars = malloc(num_subtracted * sizeof(const char*));
     for (int i=0; i < num_subtracted; i++) {
       subtracted_env_vars[i] = cram_read_string(file, offset);
       cram_skip_string(file, &offset);
@@ -176,12 +182,20 @@ void cram_read_job(const cram_file_t *file, size_t offset,
     cram_skip_string(file, &offset);
   }
 
-  // Apply diffs to the base job and write result into job.
-  decompress(base, num_subtracted, subtracted_env_vars,
-             num_changed, changed_keys, changed_vals, job);
+  if (base) {
+    // Apply diffs to the base job and write result into job.
+    decompress(base, num_subtracted, subtracted_env_vars,
+               num_changed, changed_keys, changed_vals, job);
 
-  // free temporaries
-  free_string_array(num_subtracted, subtracted_env_vars);
-  free_string_array(num_changed, changed_keys);
-  free_string_array(num_changed, changed_vals);
+    // free temporaries
+    free_string_array(num_subtracted, subtracted_env_vars);
+    free_string_array(num_changed, changed_keys);
+    free_string_array(num_changed, changed_vals);
+
+  } else {
+    // If there is no base, we just copy the changed vals (first job)
+    job->num_env_vars = num_changed;
+    job->keys         = changed_keys;
+    job->values       = changed_vals;
+  }
 }

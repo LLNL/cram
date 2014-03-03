@@ -5,7 +5,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
-#include "cram_defs.h"
+#include "cram_util.h"
 
 ///
 /// cram_file_t is used to read in and broadcast raw cram file data.
@@ -13,6 +13,7 @@
 struct cram_file_t {
   int num_jobs;      //!< Total number of jobs in cram file
   int total_procs;   //!< Total number of processes in all jobs.
+  int version;       //!< Version of cram that wrote this file.
 
   int fd;            //!< Unix file descriptor for mapped file.
   char *data;        //!< Pointer to mapped/bcast cram file data.
@@ -111,9 +112,18 @@ void cram_file_find_job(const cram_file_t *file, int rank, cram_job_t *job);
 
 
 ///
+/// Write out entire contents of cram file to the supplied file descriptor.
+///
+EXTERN_C
+void cram_cat(const cram_file_t *file);
+
+
+///
 /// Deallocate all memory for a job output by cram_file_find_job.
 ///
 EXTERN_C
 void cram_job_free(cram_job_t *job);
+
+
 
 #endif // cram_cram_file_h

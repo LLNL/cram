@@ -313,8 +313,13 @@ class CramFile(object):
 
     def __getitem__(self, index):
         """Return the index-th job stored in this CramFile."""
+        if isinstance(index, slice):
+            upper_bound = index.stop
+        else:
+            upper_bound = index + 1
+
         if self.mode == 'r':
-            while (len(self.jobs) < index+1 and
+            while (len(self.jobs) < upper_bound and
                    len(self.jobs) < self.num_jobs):
                 self._read_job()
 

@@ -31,13 +31,20 @@ bool cram_file_map(const char *filename, cram_file_t *file) {
   fstat(file->fd, &status);
   file->bytes = status.st_size;
 
-  file->data = mmap(NULL, file->bytes, PROT_READ, MAP_FILE, file->fd, 0);
+  file->data = mmap(NULL, file->bytes, PROT_READ, MAP_SHARED, file->fd, 0);
   if (file->data == MAP_FAILED) {
     return false;
   }
 
-  file->num_jobs = cram_read_int(file, NJOBS_OFFSET);
+  int magic = cram_read_int(file, MAGIC_OFFSET);
+  if (magic != MAGIC) {
+    fprintf(stderr, "Error: %s is not a cram file!", filename);
+  }
+
+  file->version     = cram_read_int(file, VERSION_OFFSET);
+  file->num_jobs    = cram_read_int(file, NJOBS_OFFSET);
   file->total_procs = cram_read_int(file, NPROCS_OFFSET);
+
   file->mapped = true;
   return true;
 }
@@ -99,9 +106,12 @@ void cram_file_find_job(const cram_file_t *file, int rank, cram_job_t *job) {
   }
 
   // Skip through job records until we come to the one for this rank.
-  size_t offset = NJOBS_OFFSET;
+  size_t offset = JOB_RECORD_OFFSET;
   int total_procs = 0;
   int job_id = 0;
+
+  // We need the first job to decompress the rest.
+  cram_job_t first_job;
 
   while (job_id < file->num_jobs) {
     total_procs += cram_read_int(file, offset);
@@ -109,7 +119,12 @@ void cram_file_find_job(const cram_file_t *file, int rank, cram_job_t *job) {
       break;
     }
 
-    // skips jobs until we find our own.
+    // record first job so we can decompress
+    if (job_id == 0) {
+      cram_read_job(file, offset, NULL, &first_job);
+    }
+
+    // skips jobs until we find the one we're looking for.
     cram_skip_job(file, &offset);
     job_id++;
   }
@@ -119,8 +134,13 @@ void cram_file_find_job(const cram_file_t *file, int rank, cram_job_t *job) {
     PMPI_Abort(MPI_COMM_WORLD, 1);
   }
 
-  // We found our job.  Write it out to the struct.
-  cram_read_job(file, offset, NULL, job);
+  // We found our job.  Write it out to the struct, decompressing if necessary.
+  if (job_id == 0) {
+    cram_read_job(file, offset, NULL, job);
+  } else {
+    cram_read_job(file, offset, &first_job, job);
+    cram_job_free(&first_job);
+  }
 }
 
 
@@ -129,4 +149,55 @@ void cram_job_free(cram_job_t *job) {
   free_string_array(job->num_args, job->args);
   free_string_array(job->num_env_vars, job->keys);
   free_string_array(job->num_env_vars, job->values);
+}
+
+
+void cram_cat(const cram_file_t *file) {
+  printf("Number of Jobs:   %12d\n", file->num_jobs);
+  printf("Total Procs:      %12d\n", file->total_procs);
+  printf("Cram version:     %12d\n", file->version);
+  printf("\n");
+  printf("Job information:\n");
+
+  // Run through all job records and write each out.
+  size_t offset = JOB_RECORD_OFFSET;
+  int job_id = 0;
+
+  // We need the first job to decompress the rest.
+  cram_job_t first_job, other_job;
+
+  while (job_id < file->num_jobs) {
+    printf("Job %d:\n", job_id);
+
+    const cram_job_t *job;
+
+    // record first job so we can decompress
+    if (job_id == 0) {
+      cram_read_job(file, offset, NULL, &first_job);
+      job = &first_job;
+    } else {
+      cram_read_job(file, offset, &first_job, &other_job);
+      job = &other_job;
+    }
+
+    printf("  Num procs: %d\n", job->num_procs);
+    printf("  Working dir: %s\n", job->working_dir);
+    printf("  Arguments:\n");
+
+    printf("      ");
+    for (int i=0; i < job->num_args; i++) {
+      if (i > 0) printf(" ");
+      printf("%s", job->args[i]);
+    }
+    printf("\n");
+
+    printf("  Environment:\n");
+    for (int i=0; i < job->num_env_vars; i++) {
+      printf("      '%s' : '%s'\n", job->keys[i], job->values[i]);
+    }
+
+    // skip to next job in the file.
+    cram_skip_job(file, &offset);
+    job_id++;
+  }
 }
