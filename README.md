@@ -34,7 +34,7 @@ one large submission.  You use Cram like this:
 
 This packs all those job invocations into a file called `cram.job`,
 and saves them for one big submission.  To use the file, you link your
-application with `libcram.a`, then you run your job like this:
+application with `libcram.a`. Finally, you run your job like this:
 
     env CRAM_FILE=/path/to/cram.job srun -n 1048576 my_mpi_application
 
@@ -53,6 +53,15 @@ through dotkits:
 
     use python-2.7.3
     use cram
+
+Once you use cram, the `CRAM_HOME` environment variable is set for
+you.  You can use this to locate `libcram.a`:
+
+    $ ls $CRAM_HOME/lib
+    libcram.a  python2.7/
+
+That's the library you want to link your application with before you
+submit your large job.
 
 If you're on a machine where Cram isn't installed yet, see [Build &
 Install](#Build & Install) to build your own.
