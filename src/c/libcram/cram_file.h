@@ -29,7 +29,6 @@ typedef struct cram_file_t cram_file_t;
 ///
 struct cram_job_t {
   int num_procs;            //!< Number of processes in this job.
-  int job_id;               //!< Index of this job within its cram file.
   const char *working_dir;  //!< Working directory to use for job
 
   int num_args;             //!< Number of command line arguments
@@ -107,8 +106,21 @@ void cram_file_close(const cram_file_t *file);
 /// @param[in]   Rank of this process on MPI_COMM_WORLD.
 /// @param[out]  Job that this rank will be a part of.
 ///
+/// @return index of this rank's job in the file, or -1 if rank is not needed
+///
 EXTERN_C
-void cram_file_find_job(const cram_file_t *file, int rank, cram_job_t *job);
+int cram_file_find_job(const cram_file_t *file, int rank, cram_job_t *job);
+
+
+///
+/// Set up cram environment based on the supplied cram job.
+/// This will:
+/// 1. Change working directory to the job's working directory.
+/// 2. Munge command line arguments to be equal to those of the job.
+/// 3. Set environment variables per those defined in the job.
+///
+EXTERN_C
+void cram_job_setup(const cram_job_t *job, int *argc, char ***argv);
 
 
 ///

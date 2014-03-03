@@ -76,7 +76,7 @@ void cram_file_map_bcast(const char *filename, cram_file_t *file, int root,
   }
 
   int size;
-  MPI_Comm_size(comm, &size);
+  PMPI_Comm_size(comm, &size);
   if (file->total_procs > size) {
     fprintf(stderr, "Error: This cram file requires %d processes, "
             "but this communicator has only %d.\n", file->total_procs, size);
@@ -98,7 +98,7 @@ void cram_file_close(const cram_file_t *file) {
 }
 
 
-void cram_file_find_job(const cram_file_t *file, int rank, cram_job_t *job) {
+int cram_file_find_job(const cram_file_t *file, int rank, cram_job_t *job) {
   if (rank >= file->total_procs) {
     fprintf(stderr, "rank passed to cram_file_find_job is greater than total "
             "number of processes in this job!\n");
@@ -129,9 +129,9 @@ void cram_file_find_job(const cram_file_t *file, int rank, cram_job_t *job) {
     job_id++;
   }
 
+  // Return -1 if this rank isn't needed to run all the jobs in the file.
   if (job_id == file->num_jobs) {
-    fprintf(stderr, "Could not find rank %d in cram file.\n", rank);
-    PMPI_Abort(MPI_COMM_WORLD, 1);
+    return -1;
   }
 
   // We found our job.  Write it out to the struct, decompressing if necessary.
@@ -140,6 +140,28 @@ void cram_file_find_job(const cram_file_t *file, int rank, cram_job_t *job) {
   } else {
     cram_read_job(file, offset, &first_job, job);
     cram_job_free(&first_job);
+  }
+
+  // set this so that cram can use it to split MPI_COMM_WORLD
+  return job_id;
+}
+
+
+void cram_job_setup(const cram_job_t *job, int *argc, char ***argv) {
+  // change working directory
+  chdir(job->working_dir);
+
+  // Replace command line arguments with those of the job.
+  // TODO: what to do with existing args?
+  *argc = job->num_args;
+  *argv = malloc(job->num_args * sizeof(char**));
+  for (int i=0; i < job->num_args; i++) {
+    (*argv)[i] = strdup(job->args[i]);
+  }
+
+  // Set environment variables based on the job's key/val pairs.
+  for (int i=0; i < job->num_env_vars; i++) {
+    setenv(job->keys[i], job->values[i], 1);
   }
 }
 
