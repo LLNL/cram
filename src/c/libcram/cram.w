@@ -52,15 +52,25 @@ static MPI_Comm local_world;
   // set up this job's environment based on the job descriptor.
   cram_job_setup(&cram_job, {{0}}, {{1}});
 
+  // Free up resources for the application to use.
+  cram_job_free(&cram_job);
+  cram_file_close(&cram_file);
+
   // Throw away unneeded ranks.
   if (job_id == -1) {
     PMPI_Finalize();
     exit(0);
   }
 
-  // Free up resources for the application to use.
-  cram_job_free(&cram_job);
-  cram_file_close(&cram_file);
+  // Redirect I/O to a separate file for each cram job.
+  // These files will be in the job's working directory.
+  char out_file_name[1024], err_file_name[1024];
+  sprintf(out_file_name, "cram.%d.out", job_id);
+  sprintf(err_file_name, "cram.%d.err", job_id);
+
+  freopen(out_file_name, "w", stdout);
+  freopen(err_file_name, "w", stderr);
+
 }{{endfn}}
 
 // This generates interceptors that will catch every MPI routine
