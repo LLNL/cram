@@ -13,7 +13,7 @@ _test_names = ['serialization',
 
 def list_tests():
     """Return names of all tests that can be run."""
-    return test_names
+    return _test_names
 
 
 def run(names, verbose=False):
