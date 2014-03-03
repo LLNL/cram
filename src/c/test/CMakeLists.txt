@@ -15,4 +15,4 @@ add_cram_test(cram-test-program cram-test-program.c)
 
 # This test runs a bash script to compare cram-cat output with cram info output.
 add_test(cram-io-test
-  ${PROJECT_SOURCE_DIR}/src/c/test/cram-io-test.sh ${PROJECT_SOURCE_DIR}/bin/cram "$<TARGET_NAME:cram-cat>")
+  ${PROJECT_SOURCE_DIR}/src/c/test/cram-io-test.sh ${PROJECT_SOURCE_DIR}/bin/cram cram-cat)

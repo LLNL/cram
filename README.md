@@ -41,9 +41,18 @@ application with `libcram.a`. Finally, you run your job like this:
 That's it. The job launches, it splits itself into a million pieces,
 and each runs independently of the others, generates its own output
 and error files, and terminates like it normally would.
-
 All you need to make sure of is that the final, large submitted job
 has at least as many processes as all the small jobs combined.
+
+When the job completes, you should see output files like this:
+
+    cram.0.out   cram.1.err    cram.3.out   cram.4.err
+    cram.0.err   cram.2.out    cram.3.err   cram.5.out   ... etc ...
+    cram.1.out   cram.2.err    cram.4.out   cram.5.err
+
+If the jobs each had different working directories, then these files will
+appear in the working directories.
+
 
 Setup
 -------------------------

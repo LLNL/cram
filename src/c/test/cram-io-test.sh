@@ -29,23 +29,23 @@ rm -f cram-info.txt cram-cat.txt test-cram.job
 export TEST_VAR1='foo'
 export TEST_VAR2='bar'
 export TEST_VAR3='baz'
-cram pack -f test-cram.job -n 35 foo bar baz
+$cram pack -f test-cram.job -n 35 foo bar baz
 
 export TEST_VAR1='bar'
 export TEST_VAR2='baz'
 export TEST_VAR3='quux'
-cram pack -f test-cram.job -n 24 foo bar
+$cram pack -f test-cram.job -n 24 foo bar
 
 unset  TEST_VAR1
 export TEST_VAR1
 export TEST_VAR3='bar'
-cram pack -f test-cram.job -n 12 foo bar baz quux
+$cram pack -f test-cram.job -n 12 foo bar baz quux
 
 unset TEST_VAR2
 export TEST_VAR2
-cram pack -f test-cram.job -n 35 foo
+$cram pack -f test-cram.job -n 35 foo
 
-cram info -a test-cram.job > cram-info.txt
+$cram info -a test-cram.job > cram-info.txt
 $bgq_run cram-cat test-cram.job > cram-cat.txt
 
 diff=$(diff cram-info.txt cram-cat.txt)
