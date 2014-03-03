@@ -10,14 +10,11 @@
 # cram's Python test suite.
 #
 
-if [ -z "$(which cram-cat)" ]; then
-    echo "Error: Couldn't find cram-cat in your PATH.  "
-    echo "       Did you run this in the build output directory?"
-    exit 1
-fi
+cram_cat="$1"
+cram="$2"
 
-if [ -z "$(which cram)" ]; then
-    echo "Error: The cram command needs to be in your PATH."
+if [ -z "$cram_cat" -o -z "$cram" ]; then
+    echo "Usage: cram-io-test.sh <path-to-cram> <path-to-cram-cat>"
     exit 1
 fi
 
