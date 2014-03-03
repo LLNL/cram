@@ -2,6 +2,8 @@
 #include <assert.h>
 #include <mpi.h>
 
+extern const char **environ;
+
 int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
 
@@ -30,7 +32,11 @@ int main(int argc, char **argv) {
              real_ranks, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   if (rank == 0) {
-    fprintf(stdout, "Can print to stdout.\n");
+    // Print out arguments
+    // Print out status of various tests
+    fprintf(stdout, "=========================================================\n");
+    fprintf(stdout, "Test results\n");
+    fprintf(stdout, "=========================================================\n");
     if (sum == check_sum) {
       fprintf(stdout, "Allreduce checksum passed.\n");
     } else {
@@ -38,14 +44,40 @@ int main(int argc, char **argv) {
       fprintf(stdout, "  Expected:  %d\n", check_sum);
       fprintf(stdout, "  Actual:    %d\n", sum);
     }
-    fprintf(stdout, "Job size:      %d\n", size);
-    fprintf(stdout, "Real job size: %d\n", real_size);
+    fprintf(stdout, "\n\n");
+
+    // Print out job size information, as well as real size info.
+    fprintf(stdout, "=========================================================\n");
+    fprintf(stdout, "Job info\n");
+    fprintf(stdout, "=========================================================\n");
+    fprintf(stdout, "  Job size:      %d\n", size);
+    fprintf(stdout, "  Real job size: %d\n", real_size);
     fprintf(stdout, "\n");
-    fprintf(stdout, "Rank mapping:\n");
+    fprintf(stdout, "  Arguments\n");
+    fprintf(stdout, "---------------------------------------------------------\n");
+    fprintf(stdout, "      ");
+    for (int i=0; i < argc; i++) {
+      if (i != 0) fprintf(stdout, " ");
+      fprintf(stdout, "%s", argv[i]);
+    }
+    fprintf(stdout, "\n\n");
+
+    // Rank mapping
+    fprintf(stdout, "  Rank mapping\n");
+    fprintf(stdout, "---------------------------------------------------------\n");
     for (int i=0; i < size; i++) {
       fprintf(stdout, "    %5d <- %5d\n", i, real_ranks[i]);
     }
+    fprintf(stdout, "\n\n");
 
+    // Print out environment
+    fprintf(stdout, "  Environment variables\n");
+    fprintf(stdout, "---------------------------------------------------------\n");
+    for (const char **var=environ; *var; var++) {
+      fprintf(stdout, "    %s\n", *var);
+    }
+
+    // Print something to stderr just to make sure that works too.
     fprintf(stderr, "Can print to stderr.\n");
   }
 
