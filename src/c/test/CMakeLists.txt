@@ -7,7 +7,11 @@ function(add_cram_test exe_name source_file)
   target_link_libraries(${exe_name} cram ${MPI_C_LIBRARIES})
 endfunction()
 
+#
+# Cram test executables
+#
 add_cram_test(cram-cat cram-cat.c)
+add_cram_test(cram-test-program cram-test-program.c)
 
 # This test runs a bash script to compare cram-cat output with cram info output.
 add_test(cram-io-test
