@@ -18,6 +18,9 @@ if [ -z "$cram_cat" -o -z "$cram" ]; then
     exit 1
 fi
 
+# Clean up old stale test data if necessary
+rm -f cram-info.txt cram-cat.txt test-cram.job
+
 export TEST_VAR1='foo'
 export TEST_VAR2='bar'
 export TEST_VAR3='baz'

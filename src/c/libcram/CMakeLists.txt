@@ -8,3 +8,5 @@ add_library(cram
 
 include_directories(${MPI_C_INCLUDE_PATH}
   ${PROJECT_SOURCE_DIR}/src/c/libcram)
+
+install(TARGETS cram DESTINATION lib)
