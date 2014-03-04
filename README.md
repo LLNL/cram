@@ -108,40 +108,47 @@ need to see what you actually submitted.
 
 There are three modes:
 
-1. `cram info <cramfile>` will show you a summary of the cram file, e.g.:
+#### Summary mode
 
-       $ cram info test-cram.job
-       Name:            test-cram.job
-       Number of Jobs:              3
-       Total Procs:                82
-       Cram version:                1
-       
-       First 10 job command lines:
-           0     35 procs    my_app foo bar 2 2 4
-           1     35 procs    my_app foo bar 2 4 2
-           2     12 procs    my_app foo bar 4 2 2
+`cram info <cramfile>` will show you a summary of the cram file, e.g.:
 
-2. `cram info -j 5 <cramfile>` will show you information about the job
-   with index 5 inside the cram file.  That includes:
+    $ cram info test-cram.job
+    Name:            test-cram.job
+    Number of Jobs:              3
+    Total Procs:                82
+    Cram version:                1
 
-    1. Size (number of processes) of the job
-    2. Its working directory
-    3. Its command line
-    4. All of its environment variables.
+    First 10 job command lines:
+        0     35 procs    my_app foo bar 2 2 4
+        1     35 procs    my_app foo bar 2 4 2
+        2     12 procs    my_app foo bar 4 2 2
 
-   Example:
-       cram info -j 2 test-cram.job
-       Job 2:
-         Num procs: 12
-         Working dir: /g/g21/gamblin2/test
-         Arguments:
-             my_app foo bar 4 2 2
-         Environment:
-             'LOG_DIRECTORY' : '/p/lscratcha/my_app/output'
-             ... etc ...
+#### Job detail
 
-3. `cram info -a <cramfile>` will print out all information for all
-   jobs in the file.  This can be very verbose, so use it carefully.
+`cram info -j 5 <cramfile>` will show you information about the job
+with index 5 inside the cram file.  That includes:
+
+  1. Size (number of processes) of the job
+  2. Its working directory
+  3. Its command line
+  4. All of its environment variables.
+
+Example:
+
+    cram info -j 2 test-cram.job
+    Job 2:
+      Num procs: 12
+      Working dir: /g/g21/gamblin2/test
+      Arguments:
+          my_app foo bar 4 2 2
+      Environment:
+          'LOG_DIRECTORY' : '/p/lscratcha/my_app/output'
+          ... etc ...
+
+#### All data
+
+`cram info -a <cramfile>` will print out all information for all
+jobs in the file.  This can be very verbose, so use it carefully.
 
 ### cram test
 
