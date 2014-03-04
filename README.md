@@ -90,10 +90,10 @@ into a file for batch submission.
     Usage: cram pack [-h] -n NPROCS -f FILE ...
 
 * `-n NPROCS`
-  Number of processes this job should run with
+  Number of processes this job should run with.
 
 * `-f FILE`
-  Number of processes this job should run with
+  File to store command invocation in.  Default is 'cram.job'
 
 * `...`
   Command line of job to run, including the executable.  All command lines
@@ -115,7 +115,7 @@ There are three modes:
        Number of Jobs:              3
        Total Procs:                82
        Cram version:                1
-
+       
        First 10 job command lines:
            0     35 procs    my_app foo bar 2 2 4
            1     35 procs    my_app foo bar 2 4 2
