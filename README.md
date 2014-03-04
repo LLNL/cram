@@ -108,7 +108,7 @@ need to see what you actually submitted.
 
 There are three modes:
 
-#### Summary mode
+#### 1. Summary mode
 
 `cram info <cramfile>` will show you a summary of the cram file, e.g.:
 
@@ -123,7 +123,7 @@ There are three modes:
         1     35 procs    my_app foo bar 2 4 2
         2     12 procs    my_app foo bar 4 2 2
 
-#### Job detail
+#### 2. Job detail
 
 `cram info -j 5 <cramfile>` will show you information about the job
 with index 5 inside the cram file.  That includes:
@@ -145,7 +145,7 @@ Example:
           'LOG_DIRECTORY' : '/p/lscratcha/my_app/output'
           ... etc ...
 
-#### All data
+#### 3. All data
 
 `cram info -a <cramfile>` will print out all information for all
 jobs in the file.  This can be very verbose, so use it carefully.
