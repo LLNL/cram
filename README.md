@@ -28,9 +28,9 @@ Cram fixes this problem by allowing you to lump all of those jobs into
 one large submission.  You use Cram like this:
 
     cram pack -f cram.job -n 1 my_mpi_application input.1.txt
-    cram pack -f cram.job -n 2 my_mpi_application input.2.txt
+    cram pack -f cram.job -n 1 my_mpi_application input.2.txt
     ...
-    cram pack -f cram.job -n 1048576 my_mpi_application input.1048576.txt
+    cram pack -f cram.job -n 1 my_mpi_application input.1048576.txt
 
 This packs all those job invocations into a file called `cram.job`,
 and saves them for one big submission.  To use the file, you link your
@@ -38,9 +38,9 @@ application with `libcram.a`. Finally, you run your job like this:
 
     env CRAM_FILE=/path/to/cram.job srun -n 1048576 my_mpi_application
 
-That's it. The job launches, it splits itself into a million pieces,
-and each runs independently of the others, generates its own output
-and error files, and terminates like it normally would.
+That's it. The job launches, it splits itself into a million pieces.
+Each runs independently of the others, generates its own output
+and error files, then terminates as it normally would.
 All you need to make sure of is that the final, large submitted job
 has at least as many processes as all the small jobs combined.
 
