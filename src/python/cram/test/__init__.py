@@ -21,6 +21,8 @@ def run(names, verbose=False):
        it's empty, run ALL of the tests."""
     verbosity = 1 if not verbose else 2
 
+    # If they didn't provide names of tests to run, then use the default
+    # list above.
     if not names:
         names = _test_names
     else:
@@ -35,7 +37,7 @@ def run(names, verbose=False):
 
     testsRun = errors = failures = skipped = 0
     for test in names:
-        module = 'cram.test.' + test
+        module = _test_module + '.' + test
         print module, test
         suite = unittest.defaultTestLoader.loadTestsFromName(module)
 
