@@ -5,6 +5,9 @@ Runs many small MPI jobs inside one large MPI job.
 
 by Todd Gamblin, [tgamblin@llnl.gov](mailto:tgamblin@llnl.gov)
 
+This tool would have been called "Clowncar", but it was decided that
+it should have a more serious name.  Cram stands for "Clowncar Renamed
+to Appease Management".
 
 Overview
 -------------------------
