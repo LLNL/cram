@@ -159,6 +159,43 @@ something is wrong wtih Cram, use this command to see if it catches
 anything.
 
 
+Packing lots of jobs
+-------------------------
+
+If you want to pack millions of jobs, you most likely do NOT want to
+call ``cram`` millions of times.  Python starts up very slowly, and
+you don't want to pay that cost for each pack invocation.  You can get
+around this by writing a simple Python script.  Alongside the ``cram``
+script, there is a ``cram-python`` script.  You can use this to make
+an executable script like this one:
+
+    #!/usr/bin/env cram-python
+
+    import os
+    from cram import *
+
+    cf = CramFile('cram.job', 'w')
+    env = os.environ
+
+    # Pack cram invocations.  Usage:
+    #
+    # cf.pack(<num procs>, <working dir>, <command-line arguments>, <environment>)
+    #
+    env["MY_SPECIAL_VAR"] = "my_value"
+    cf.pack(1, '/home/youruser/ensemble/run-0', ['input.1.txt'], env)
+    cf.pack(1, '/home/youruser/ensemble/run-1', ['input.2.txt'], env)
+
+    # ...
+
+    env["MY_SPECIAL_VAR"] = "another_value"
+    cf.pack(1, '/home/youruser/ensemble/run-1048576', ['input.1048576.txt'], env)
+    cf.close()
+
+This script will create a cram file, just like all those invocations
+of ``cram pack`` above, but it will run much faster because it runs in
+a single python session.
+
+
 Build & Install
 -------------------------
 

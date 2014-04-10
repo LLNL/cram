@@ -22,10 +22,10 @@ allow scattering jobs very quickly to many MPI processes.
 Sample usage:
 
   cf = CramFile('file.cram', 'w')
-  cf.append(Job(64,             # number of processes
-                os.getcwd(),    # working dir, as a string
-                sys.argv[1:],   # cmdline args, as a list
-                os.env))        # environment, as a dict.
+  cf.pack(Job(64,             # number of processes
+              os.getcwd(),    # working dir, as a string
+              sys.argv[1:],   # cmdline args, as a list
+              os.env))        # environment, as a dict.
   cf.close()
 
 To read from a CramFile, use len and iterate:
@@ -223,11 +223,11 @@ class CramFile(object):
         write_int(self.stream, self.num_procs, 4)
 
 
-    def append(self, job):
+    def _pack(self, job):
         """Appends a job to a cram file, compressing the environment in the
            process."""
         if self.mode == 'r':
-            raise IOError("Cannot append to CramFile opened for reading.")
+            raise IOError("Cannot pack into CramFile opened for reading.")
 
         # Number of processes
         write_int(self.stream, job.num_procs, 4)
@@ -267,6 +267,18 @@ class CramFile(object):
             write_int(self.stream, self.num_procs, 4)
 
         self.jobs.append(job)
+
+
+    def pack(self, *args):
+        if len(args) == 1:
+            job = args[0]
+            if not isinstance(job, Job):
+                raise TypeError(
+                    "Must pack a job or (nprocs, working_dir, args, env)")
+            self._pack(job)
+
+        elif len(args) == 4:
+            self._pack(Job(*args))
 
 
     def _read_job(self):

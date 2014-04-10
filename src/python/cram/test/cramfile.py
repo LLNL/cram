@@ -1,5 +1,5 @@
 import os
-from  tempfile import mktemp
+from tempfile import mktemp
 import unittest
 import random
 from contextlib import contextmanager, closing
@@ -65,7 +65,7 @@ class CramFileTest(unittest.TestCase):
 
         with tempfile() as tmp:
             with closing(CramFile(tmp, mode)) as cf:
-                cf.append(Job(num_procs, working_dir, args, env))
+                cf.pack(Job(num_procs, working_dir, args, env))
                 self.assertEqual(cf.num_jobs, 1)
                 self.assertEqual(cf.num_procs, 64)
 
@@ -95,7 +95,7 @@ class CramFileTest(unittest.TestCase):
         with tempfile() as tmp:
             with closing(CramFile(tmp, 'w')) as cf:
                 for job in jobs:
-                    cf.append(job)
+                    cf.pack(job)
                     total_procs += job.num_procs
 
             with closing(CramFile(tmp, 'r')) as cf:
@@ -111,7 +111,7 @@ class CramFileTest(unittest.TestCase):
         with tempfile() as tmp:
             for job in jobs:
                 with closing(CramFile(tmp, 'a')) as cf:
-                    cf.append(job)
+                    cf.pack(job)
                 total_procs += job.num_procs
 
             with closing(CramFile(tmp, 'r')) as cf:
