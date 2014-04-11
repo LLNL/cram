@@ -5,6 +5,9 @@ Runs many small MPI jobs inside one large MPI job.
 
 by Todd Gamblin, [tgamblin@llnl.gov](mailto:tgamblin@llnl.gov)
 
+This tool would have been called "Clowncar", but it was decided that
+it should have a more serious name.  Cram stands for "Clowncar Renamed
+to Appease Management".
 
 Overview
 -------------------------
@@ -157,6 +160,60 @@ jobs in the file.  This can be very verbose, so use it carefully.
 Running `cram test` will run Cram's Python test suite.  If you think
 something is wrong wtih Cram, use this command to see if it catches
 anything.
+
+
+Packing lots of jobs
+-------------------------
+
+If you want to pack millions of jobs, you most likely do NOT want to
+call ``cram`` millions of times.  Python starts up very slowly, and
+you don't want to pay that cost for each pack invocation.  You can get
+around this by writing a simple Python script.  Alongside the ``cram``
+script, there is a ``cram-python`` script.  You can use this to make
+an executable script like this one:
+
+    #!/usr/bin/env cram-python
+
+    import os
+    from cram import *
+
+    cf = CramFile('cram.job', 'w')
+    env = os.environ
+
+    # Pack cram invocations.
+    # Usage:
+    #   cf.pack(<num procs>, <working dir>, <command-line arguments>, <environment>)
+    env["MY_SPECIAL_VAR"] = "my_value"
+    cf.pack(1, '/home/youruser/ensemble/run-0', ['input.1.txt'], env)
+    cf.pack(1, '/home/youruser/ensemble/run-1', ['input.2.txt'], env)
+    # ...
+    env["MY_SPECIAL_VAR"] = "another_value"
+    cf.pack(1, '/home/youruser/ensemble/run-1048576', ['input.1048576.txt'], env)
+
+    cf.close()
+
+This script will create a cram file, just like all those invocations
+of ``cram pack`` above, but it will run much faster because it runs in
+a single python session.
+
+Here's a more realistic one, for creating a million jobs with
+different user-specific scratch directories:
+
+    #!/usr/bin/env cram-python
+
+    import os
+    import getpass
+    from cram import *
+
+    env  = os.environ
+    user = getpass.getuser()
+
+    cf = CramFile('cram.job', 'w')
+    for i in xrange(1048576):
+        env["SCRATCH_DIR"] = "/p/lscratcha/%s/scratch-%08d" % (user, i)
+        args = ["input.%08d" % i]
+        cf.pack(1, '/home/%s/ensemble/run-%08d' % (user, i), args, env)
+    cf.close()
 
 
 Build & Install

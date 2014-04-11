@@ -1,0 +1,56 @@
+#!/bin/sh
+#
+# cram-python
+#
+# If you want to write your own executable Python script that uses
+# Cram, modules, on Mac OS or maybe some others, you can use this
+# script to do it like this:
+#
+#   #!/usr/bin/env cram-python
+#
+# We provide a separate script for this because most Linuxes don't
+# support more than one argument after the shebang command.  Mac OS
+# will actually let you do this:
+#
+#   #!/usr/bin/env cram python
+#
+# But it is non-standard so we provide this script as a workaround.
+#
+# NOTE: This script needs to be installed alongside the main cram
+# script to work properly.
+#
+
+#
+# Get readlink -f behavior when readlink doesn't support it
+#
+function readlink_f {
+    _target_file=$1
+
+    cd `dirname $_target_file`
+    _target_file=`basename $_target_file`
+
+    # Iterate down a (possible) chain of symlinks
+    while [ -L "$_target_file" ]; do
+	_target_file=`readlink $_target_file`
+	cd `dirname $_target_file`
+	_target_file=`basename $_target_file`
+    done
+
+    # Compute the canonicalized name by finding the physical path
+    # for the directory we're in and appending the target file.
+    _phys_dir=`pwd -P`
+    _result=$_phys_dir/$_target_file
+    echo $_result
+}
+
+# Get directory of this script.
+mydir=$(dirname $(readlink_f "$0"))
+
+# Make sure the cram executable is in the same directory as cram-python
+cram="$mydir/cram"
+if [ ! -x "$cram" ]; then
+    echo "ERROR: cram-python must be installed alongside the cram script!"
+fi
+
+# Execute Cram with the python option
+$cram python "$@"

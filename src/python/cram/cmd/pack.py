@@ -23,4 +23,4 @@ def pack(parser, args):
         tty.die("You must supply a number of processes to run with.")
 
     with closing(CramFile(args.file, 'a')) as cf:
-        cf.append(Job(args.nprocs, os.getcwd(), args.command, os.environ))
+        cf.pack(args.nprocs, os.getcwd(), args.command, os.environ)
