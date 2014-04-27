@@ -21,6 +21,7 @@ def write_int(stream, integer, fmt=_default_int_format):
         fmt = _int_sizes[fmt]
     packed = struct.pack(fmt, integer)
     stream.write(packed)
+    return len(packed)
 
 
 def read_int(stream, fmt=_default_int_format):
@@ -35,8 +36,9 @@ def read_int(stream, fmt=_default_int_format):
 
 def write_string(stream, string):
     length = len(string)
-    write_int(stream, length)
+    int_len = write_int(stream, length)
     stream.write(string)
+    return len(string) + int_len
 
 
 def read_string(stream):

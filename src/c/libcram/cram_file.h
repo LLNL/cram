@@ -4,21 +4,29 @@
 #include <mpi.h>
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <stdbool.h>
-#include "cram_util.h"
+
+#ifdef __cplusplus
+#define EXTERN_C extern "C"
+#else
+#define EXTERN_C
+#endif // __cplusplus
 
 ///
 /// cram_file_t is used to read in and broadcast raw cram file data.
 ///
 struct cram_file_t {
-  int num_jobs;      //!< Total number of jobs in cram file
-  int total_procs;   //!< Total number of processes in all jobs.
-  int version;       //!< Version of cram that wrote this file.
+  int num_jobs;            //!< Total number of jobs in cram file
+  int total_procs;         //!< Total number of processes in all jobs.
+  int version;             //!< Version of cram that wrote this file.
+  int max_job_size;        //!< Size of largest job record in this file.
+  FILE *fd;                //!< C file pointer for the cram file.
 
-  int fd;            //!< Unix file descriptor for mapped file.
-  char *data;        //!< Pointer to mapped/bcast cram file data.
-  size_t bytes;      //!< number of bytes allocated for data.
-  bool mapped;       //!< 1 if data is mapped, 0 if it is malloc'd.
+  char *cur_job_record;    //!< Last raw, compressed job record we read in.
+  int cur_job_record_size; //!< Size of the current job record
+  int cur_job_procs;       //!< Number of proceses in the current job.
+  int cur_job_id;          //!< Id of the current job.
 };
 typedef struct cram_file_t cram_file_t;
 
@@ -42,16 +50,65 @@ typedef struct cram_job_t cram_job_t;
 
 
 ///
-/// Map a cram file into memory and write it into the supplied
-/// struct.  This is a local operation.
+/// Open a cram file into memory and read its header information
+/// into the supplied struct.  This is a local operation.
 ///
 /// @param[in]  filename   Name of file to open
-/// @param[out] file       Descriptor for the mapped cram file.
+/// @param[out] file       Descriptor for the opened cram file.
 ///
-/// @return true if the map was successful, false otherwise.
+/// @return true if successful, false otherwise.
 ///
 EXTERN_C
-bool cram_file_map(const char *filename, cram_file_t *file);
+bool cram_file_open(const char *filename, cram_file_t *file);
+
+
+///
+/// Free buffers and files associated with the cram file object.
+/// After calling, the file is invalid and should no longer be accessed.
+///
+/// This is not collective and can be done at any time after cram_file_open.
+///
+/// @param[in] file   Cram file to close.
+///
+EXTERN_C
+void cram_file_close(const cram_file_t *file);
+
+
+///
+/// Whether the cram file has remaining job records to read.
+///
+/// @param[in] file   A cram file.
+///
+bool cram_file_has_more_jobs(const cram_file_t *file);
+
+
+///
+/// Read the next job into the cur_job buffer and update cur_job_size.
+///
+/// Return true if successful, false on error.
+///
+/// @param[in]    file   Cram file to advance.
+///
+bool cram_file_next_job(cram_file_t *file);
+
+
+///
+/// Read an entire job record out of a cram file, starting at the supplied
+/// offset.
+///
+/// For the first job in a cram file, supply NULL for base.  Subsequent jobs
+/// have their environment compressed by comparing it to the first job's
+/// environment.  For these jobs, pass a reference to the base job so that they
+/// can be created by applying differences to the base.
+///
+/// @param[in]  job_record  Compressed job record from a cram file.
+/// @param[in]  offset      Offset in file.
+/// @param[in]  base        First job in the cram file.  Pass NULL to
+///                         read the first job out of the file.
+///
+EXTERN_C
+void cram_read_job(const char *job_record,
+                   const cram_job_t *base, cram_job_t *job);
 
 
 ///
@@ -68,7 +125,7 @@ void cram_file_bcast(cram_file_t *file, int root, MPI_Comm comm);
 
 ///
 /// Map a cram file into memory and bcast it to all processes on the supplied
-/// communicator. This is a combination of cram_file_map and cram_file_bcast.
+/// communicator. This is a combination of cram_file_open and cram_file_bcast.
 ///
 /// @param[in]    filename   Name of file to open
 /// @param[inout] file       Descriptor for the mapped cram file.
@@ -76,40 +133,8 @@ void cram_file_bcast(cram_file_t *file, int root, MPI_Comm comm);
 /// @param[in]    comm       Communicator to bcast on.
 ///
 EXTERN_C
-void cram_file_map_bcast(const char *filename, cram_file_t *file, int root,
-                         MPI_Comm comm);
-
-
-///
-/// Free any resources (i.e. memory) associated with the cram file.
-/// After calling, the file is invalid and should no longer be accessed.
-///
-/// This is not collective and can be done at any time after cram_file_open.
-///
-/// @param[in] file   Cram file to close.
-///
-EXTERN_C
-void cram_file_close(const cram_file_t *file);
-
-
-///
-/// Given a process rank on a larger communicators (e.g., MPI_COMM_WORLD), find
-/// the job that rank should be a part of and write it out.
-///
-/// Ranks are currently allocated to jobs in order.  i.e. if job 0 in the cram
-/// file has 64 processes, rank 7 will be the 7th process in that job.  If job 1
-/// has 16 processes, global rank 67 will be rank 2 in job 1, and so on.
-///
-/// This is not collective and does a linear local search of the cram file.
-///
-/// @param[in]   Cram file containing all job descriptors.
-/// @param[in]   Rank of this process on MPI_COMM_WORLD.
-/// @param[out]  Job that this rank will be a part of.
-///
-/// @return index of this rank's job in the file, or -1 if rank is not needed
-///
-EXTERN_C
-int cram_file_find_job(const cram_file_t *file, int rank, cram_job_t *job);
+void cram_file_open_bcast(const char *filename, cram_file_t *file, int root,
+                          MPI_Comm comm);
 
 
 ///
@@ -124,10 +149,21 @@ void cram_job_setup(const cram_job_t *job, int *argc, char ***argv);
 
 
 ///
+/// Print metadata for a cram job.  Includes:
+///  1. Number of processes
+///  2. Working dir
+///  3. Arguments
+///  4. Environment
+///
+EXTERN_C
+void cram_job_print(const cram_job_t *job);
+
+
+///
 /// Write out entire contents of cram file to the supplied file descriptor.
 ///
 EXTERN_C
-void cram_cat(const cram_file_t *file);
+void cram_file_cat(cram_file_t *file);
 
 
 ///

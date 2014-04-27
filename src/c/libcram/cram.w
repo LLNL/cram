@@ -40,11 +40,11 @@ static MPI_Comm local_world;
   // Read the whole file in on rank 1 (it's compressed, so this should scale fairly well,
   // e.g. out to ~1M jobs assuming 1GB RAM per process)
   cram_file_t cram_file;
-  cram_file_map_bcast(cram_filename, &cram_file, 0, MPI_COMM_WORLD);
+  cram_file_open_bcast(cram_filename, &cram_file, 0, MPI_COMM_WORLD);
 
   // Find our job descriptor in the cram file.
   cram_job_t cram_job;
-  int job_id = cram_file_find_job(&cram_file, rank, &cram_job);
+  int job_id = 0;//cram_file_find_job(&cram_file, rank, &cram_job);
 
   // Use the job id to split MPI_COMM_WORLD.
   PMPI_Comm_split(MPI_COMM_WORLD, job_id, rank, &local_world);

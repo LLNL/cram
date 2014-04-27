@@ -14,11 +14,11 @@ int main(int argc, char **argv) {
   const char *filename = argv[1];
 
   cram_file_t file;
-  if (!cram_file_map(filename, &file)) {
+  if (!cram_file_open(filename, &file)) {
     printf("failed to map with errno %d: %s\n", errno, strerror(errno));
     exit(1);
   }
 
   printf("Name:%25s\n", filename);
-  cram_cat(&file);
+  cram_file_cat(&file);
 }

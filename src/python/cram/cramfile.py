@@ -53,9 +53,11 @@ int(4)       0x6372616d ('cram')
 int(4)       Version
 int(4)       # of jobs
 int(4)       # of processes
+int(4)       Size of max job record in this file
 
 * Job records
 ------------------------------------------------------------------------
+  int(4)     Size of job record in bytes
   int(4)     Number of processes
   str        Working dir
 
@@ -65,8 +67,8 @@ int(4)       # of processes
   int(4)     Number of subtracted env var names (0 for first record)
    * str       Subtracted env vars in sorted order.
   int(4)     Number of added or changed env vars
-   *  str      Names of added/changed var
-   *  str      Corresponding value
+   * str      Names of added/changed var
+   * str      Corresponding value
 
 Env vars are stored alternating keys and values, in sorted order by key.
 ========================================================================
@@ -83,13 +85,14 @@ import llnl.util.tty as tty
 _magic = 0x6372616d
 
 # Increment this when the binary format changes (hopefully infrequent)
-_version = 1
+_version = 2
 
 # Offsets of file header fields
 _magic_offset   = 0
 _version_offset = 4
 _njobs_offset   = 8
 _nprocs_offset  = 12
+_max_job_offset = 16
 
 
 @contextmanager
@@ -181,6 +184,7 @@ class CramFile(object):
             self.version = _version
             self.num_jobs = 0
             self.num_procs = 0
+            self.max_job_size = 0
             self._write_header()
 
         elif mode == 'a':
@@ -207,6 +211,7 @@ class CramFile(object):
 
         self.num_jobs = read_int(self.stream, 4)
         self.num_procs = read_int(self.stream, 4)
+        self.max_job_size = read_int(self.stream, 4)
 
         # read in the first job automatically if it is there, since
         # it is used for compression of subsequent jobs.
@@ -221,6 +226,7 @@ class CramFile(object):
         write_int(self.stream, self.version, 4)
         write_int(self.stream, self.num_jobs, 4)
         write_int(self.stream, self.num_procs, 4)
+        write_int(self.stream, self.max_job_size, 4)
 
 
     def _pack(self, job):
@@ -229,33 +235,42 @@ class CramFile(object):
         if self.mode == 'r':
             raise IOError("Cannot pack into CramFile opened for reading.")
 
+        # Save offset and write 0 for size to start with
+        start_offset = self.stream.tell()
+        size = 0
+        write_int(self.stream, 0, 4)
+
         # Number of processes
-        write_int(self.stream, job.num_procs, 4)
+        size += write_int(self.stream, job.num_procs, 4)
 
         # Working directory
-        write_string(self.stream, job.working_dir)
+        size += write_string(self.stream, job.working_dir)
 
         # Command line arguments
-        write_int(self.stream, len(job.args), 4)
+        size += write_int(self.stream, len(job.args), 4)
         for arg in job.args:
-            write_string(self.stream, arg)
+            size += write_string(self.stream, arg)
 
         # Compress using first dict
         missing, changed = compress(
             self.jobs[0].env if self.jobs else {}, job.env)
 
         # Subtracted env var names
-        write_int(self.stream, len(missing), 4)
+        size += write_int(self.stream, len(missing), 4)
         for key in sorted(missing):
-            write_string(self.stream, key)
+            size += write_string(self.stream, key)
 
         # Changed environment variables
-        write_int(self.stream, len(changed), 4)
+        size += write_int(self.stream, len(changed), 4)
         for key in sorted(changed.keys()):
-            write_string(self.stream, key)
-            write_string(self.stream, changed[key])
+            size += write_string(self.stream, key)
+            size += write_string(self.stream, changed[key])
 
         with save_position(self.stream):
+            # Update job chunk size
+            self.stream.seek(start_offset)
+            write_int(self.stream, size, 4)
+
             # Update total number of jobs in file.
             self.num_jobs += 1
             self.stream.seek(_njobs_offset)
@@ -265,6 +280,12 @@ class CramFile(object):
             self.num_procs += job.num_procs
             self.stream.seek(_nprocs_offset)
             write_int(self.stream, self.num_procs, 4)
+
+            # Update max job size if necessary
+            if size > self.max_job_size:
+                self.max_job_size = size
+                self.stream.seek(_max_job_offset)
+                write_int(self.stream, self.max_job_size, 4)
 
         self.jobs.append(job)
 
@@ -289,6 +310,10 @@ class CramFile(object):
            that isn't already in memory.  Client code should use
            len(), [], or iterate to read jobs from CramFiles.
         """
+        # Size of job record
+        job_bytes   = read_int(self.stream, 4)
+        start_pos = self.stream.tell()
+
         # Number of processes
         num_procs   = read_int(self.stream, 4)
 
@@ -314,6 +339,12 @@ class CramFile(object):
             key = read_string(self.stream)
             val = read_string(self.stream)
             changed[key] = val
+
+        # validate job record size
+        actual_size = self.stream.tell() - start_pos
+        if actual_size != job_bytes:
+            raise Exception("Cram file job record size is invalid! "+
+                            "Expected %d, found %d" % (job_bytes, actual_size))
 
         # Decompress using first dictionary
         env = decompress(self.jobs[0].env if self.jobs else {},

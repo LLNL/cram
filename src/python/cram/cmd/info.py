@@ -21,6 +21,7 @@ def write_header(args, cf):
     print "Number of Jobs:   %12d" % cf.num_jobs
     print "Total Procs:      %12d" % cf.num_procs
     print "Cram version:     %12d" % cf.version
+    print "Max job record:   %12d" % cf.max_job_size
 
 
 def write_job_summary(args, cf):
