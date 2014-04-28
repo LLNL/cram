@@ -5,6 +5,13 @@
 #h
 #h https://lc.llnl.gov/stash/projects/SCALE/repos/cram
 
+# Unuse any other python dotkits
+unuse -q `dk_rep python*`
+
+# Use the Python 2.7.3 package
+use -q python-2.7.3
+
+# Cram setup
 dk_setenv CRAM_HOME        @CMAKE_INSTALL_PREFIX@
 
 dk_alter  PATH             $CRAM_HOME/bin
