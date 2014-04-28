@@ -1,3 +1,4 @@
+import llnl.util.tty as tty
 from llnl.util.lang import *
 from llnl.util.filesystem import ancestor
 

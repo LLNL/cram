@@ -1,5 +1,4 @@
 #include <unistd.h>
-#include <assert.h>
 #include <stdbool.h>
 #include <errno.h>
 #include <stdio.h>
@@ -12,6 +11,9 @@
 // Magic number goes at beginning of file
 #define MAGIC 0x6372616d
 
+// Tag for cram messages
+#define CRAM_TAG 7675
+
 // Offsets of file header fields
 #define MAGIC_OFFSET       0
 #define VERSION_OFFSET     4
@@ -21,6 +23,9 @@
 
 // offset of first job record
 #define JOB_RECORD_OFFSET  20
+
+// max concurrent ranks to send job records to at once.
+#define MAX_CONCURRENT_PEERS 512
 
 // ------------------------------------------------------------------------
 // Utility functions
@@ -50,26 +55,29 @@ static void free_string_array(int num_elts, const char **arr) {
 
 
 ///
-/// Read a cram int from a FILE*.
+/// Create a copy of an entire string array.
 ///
-static int file_read_int(const cram_file_t *file) {
-  int buf;
-  size_t bytes = fread(&buf, sizeof(int), 1, file->fd);
-  assert(bytes == sizeof(int));
-  return ntohl(buf);
+static const char **dup_string_array(int num_elts, const char **src) {
+  const char **arr = malloc(sizeof(char*) * num_elts);
+  for (int i=0; i < num_elts; i++) {
+    arr[i] = strdup(src[i]);
+  }
+  return arr;
 }
 
 
 ///
-/// Read a cram string from a FILE*.
+/// Read a cram int from a FILE*.
 ///
-static char *file_read_string(const cram_file_t *file) {
-  size_t len = file_read_int(file);
-  char *str = malloc(sizeof(char) * len + 1);
-  size_t bytes = fread(str, sizeof(char), len, file->fd);
-  assert(bytes == sizeof(char) * len);
-  str[len-1] = '\0';
-  return str;
+static int file_read_int(const cram_file_t *file) {
+  int buf;
+  size_t ints = fread(&buf, sizeof(int), 1, file->fd);
+  if (ints != 1) {
+    fprintf(stderr, "Error reading cram file.  "
+            "Expected one int but got read %zd ints.\n", ints);
+    exit(1);
+  }
+  return ntohl(buf);
 }
 
 
@@ -115,7 +123,6 @@ bool cram_file_open(const char *filename, cram_file_t *file) {
   file->total_procs  = file_read_int(file);
   file->max_job_size = file_read_int(file);
 
-  file->cur_job_record = malloc(file->max_job_size);
   file->cur_job_record_size = 0;
   file->cur_job_procs = 0;
   file->cur_job_id = -1;
@@ -126,7 +133,6 @@ bool cram_file_open(const char *filename, cram_file_t *file) {
 
 void cram_file_close(const cram_file_t *file) {
   fclose(file->fd);
-  free(file->cur_job_record);
 }
 
 
@@ -136,7 +142,7 @@ bool cram_file_has_more_jobs(const cram_file_t *file) {
 
 
 ///
-/// Helper for cram_read_job -- does the decompression work.
+/// Helper for cram_job_decompress -- does the real work.
 ///
 static inline void decompress(const cram_job_t *base,
                               int num_missing, const char **missing,
@@ -195,8 +201,8 @@ static inline void decompress(const cram_job_t *base,
 }
 
 
-void cram_read_job(const char *job_record,
-                   const cram_job_t *base, cram_job_t *job) {
+void cram_job_decompress(const char *job_record,
+                         const cram_job_t *base, cram_job_t *job) {
   // start at beginning of job record.
   size_t offset = 0;
 
@@ -264,7 +270,7 @@ void cram_read_job(const char *job_record,
 }
 
 
-bool cram_file_next_job(cram_file_t *file) {
+bool cram_file_next_job(cram_file_t *file, char *job_record) {
   int job_record_size = file_read_int(file);
   if (job_record_size > file->max_job_size) {
     fprintf(stderr, "Error: Invalid job record size: %d > %d",
@@ -273,50 +279,116 @@ bool cram_file_next_job(cram_file_t *file) {
   }
 
   file->cur_job_record_size = job_record_size;
-  size_t bytes = fread(file->cur_job_record, 1, job_record_size, file->fd);
-  assert(bytes == job_record_size);
+  size_t bytes = fread(job_record, 1, job_record_size, file->fd);
+  if (bytes != job_record_size) {
+    fprintf(stderr, "Error: Expected to read %d bytes, but got %zd\n",
+            job_record_size, bytes);
+    return false;
+  }
 
-  int *num_procs = (int*)(file->cur_job_record);
-  file->cur_job_procs = ntohl(*num_procs);
+  size_t offset = 0;
+  file->cur_job_procs = buf_read_int(job_record, &offset);
   file->cur_job_id++;
 
   return true;
 }
 
 
-void cram_bcast_jobs(cram_file_t *file, cram_job_t *job, int root, MPI_Comm comm) {
+void cram_file_bcast_jobs(cram_file_t *file, int root, cram_job_t *job, int *id,
+                          MPI_Comm comm) {
   int rank, size;
   PMPI_Comm_rank(comm, &rank);
   PMPI_Comm_size(comm, &size);
 
-  // Broadcast the struct, along with the file size.
-//  PMPI_Bcast(file, sizeof(cram_file_t), MPI_BYTE, root, comm);
-
-  // Allocate and broadcast data out to all processes
-  if (rank != root) {
-//    file->data = malloc(file->bytes);
-//    file->fd = -1;
-  }
-//  PMPI_Bcast(file->data, file->bytes, MPI_BYTE, root, comm);
-}
-
-
-void cram_file_open_bcast(const char *filename, cram_file_t *file, int root,
-                         MPI_Comm comm) {
-  if (!cram_file_open(filename, file)) {
-    fprintf(stderr, "Error: cram_file_open failed with error %d\n", errno);
-    PMPI_Abort(comm, errno);
+  // check total procs and grab the max job size.
+  int max_job_size;
+  if (rank == root) {
+    if (file->total_procs > size) {
+      fprintf(stderr, "Error: This cram file requires %d processes, "
+              "but this communicator has only %d.\n", file->total_procs, size);
+      PMPI_Abort(comm, 1);
+    }
+    max_job_size = file->max_job_size;
   }
 
-  int size;
-  PMPI_Comm_size(comm, &size);
-  if (file->total_procs > size) {
-    fprintf(stderr, "Error: This cram file requires %d processes, "
-            "but this communicator has only %d.\n", file->total_procs, size);
-    PMPI_Abort(comm, 1);
+  // bcast max job size
+  PMPI_Bcast(&max_job_size, 1, MPI_INT, root, comm);
+  char *job_record = malloc(max_job_size);
+
+  // read in compressed data for first job record
+  if (rank == root) {
+    if (!cram_file_next_job(file, job_record)) {
+      fprintf(stderr, "Error reading job %d from cram file on rank %d\n",
+              0, root);
+      PMPI_Abort(comm, 1);
+    }
   }
 
-  cram_file_bcast(file, root, comm);
+  // Bcast and decompress first job.
+  cram_job_t first_job;
+  PMPI_Bcast(job_record, max_job_size, MPI_CHAR, root, comm);
+  cram_job_decompress(job_record, NULL, &first_job);
+
+  // start by sending to the first rank in the second job.
+  int cur_rank = first_job.num_procs;
+  bool in_first_job = rank < cur_rank;
+
+  if (rank == root) {
+    // Root needs to send to all the other jobs
+    // Start by iterating through remaining jobs in the file.
+    while (cram_file_has_more_jobs(file)) {
+      if (!cram_file_next_job(file, job_record)) {
+        fprintf(stderr, "Error reading job %d from cram file on rank %d\n",
+                file->cur_job_id + 1, root);
+        PMPI_Abort(comm, 1);
+      }
+
+      // array of requests for all sends we'll do
+      // max concurrent sends is really max number of ranks we'll send to at once.
+      int max_requests = MAX_CONCURRENT_PEERS * 2;
+      MPI_Request requests[max_requests];
+
+      // iterate through all ranks in this job, incrementing first_rank as we go.
+      int end_rank = cur_rank + file->cur_job_procs;
+      while (cur_rank < end_rank) {
+        int r = 0;
+        while (r < max_requests && cur_rank < end_rank) {
+          PMPI_Isend(&file->cur_job_id, 1, MPI_INT, cur_rank,
+                     CRAM_TAG, comm, &requests[r++]);
+          PMPI_Isend(job_record, file->cur_job_record_size, MPI_CHAR, cur_rank,
+                     CRAM_TAG, comm, &requests[r++]);
+          cur_rank++;
+        }
+        PMPI_Waitall(r, requests, MPI_STATUSES_IGNORE);
+      }
+    }
+
+    // send a job id of -1 to any inactive ranks
+    int inactive_rank_id = -1;
+    for (; cur_rank < size; cur_rank++) {
+      PMPI_Send(&inactive_rank_id, 1, MPI_INT, cur_rank, CRAM_TAG, comm);
+    }
+
+  } else if (!in_first_job) {
+    // Ranks NOT in the first job need to receive their actual job record.
+    // Ranks in the first job already have their job record.
+    PMPI_Recv(id, 1, MPI_INT, root, CRAM_TAG, comm, MPI_STATUS_IGNORE);
+    if (*id >= 0) {
+      PMPI_Recv(job_record, max_job_size, MPI_CHAR, root, CRAM_TAG, comm,
+                MPI_STATUS_IGNORE);
+    }
+    cram_job_decompress(job_record, &first_job, job);
+  }
+
+  // If this rank is in the first job, then just copy the first job we
+  // got from the bcast.  And set the id to zero.
+  if (in_first_job) {
+    cram_job_copy(&first_job, job);
+    *id = 0;
+  }
+
+  // Can free the first job now b/c we don't need it.
+  cram_job_free(&first_job);
 }
 
 
@@ -344,6 +416,19 @@ void cram_job_free(cram_job_t *job) {
   free_string_array(job->num_args, job->args);
   free_string_array(job->num_env_vars, job->keys);
   free_string_array(job->num_env_vars, job->values);
+}
+
+
+void cram_job_copy(const cram_job_t *src, cram_job_t *dest) {
+  dest->num_procs    = src->num_procs;
+  dest->working_dir  = strdup(src->working_dir);
+
+  dest->num_args     = src->num_args;
+  dest->args         = dup_string_array(src->num_args, src->args);
+
+  dest->num_env_vars = src->num_env_vars;
+  dest->keys         = dup_string_array(src->num_env_vars, src->keys);
+  dest->values       = dup_string_array(src->num_env_vars, src->values);
 }
 
 
@@ -378,10 +463,13 @@ void cram_file_cat(cram_file_t *file) {
     return;
   }
 
+  // space for raw, compressed job record.
+  char *job_record = malloc(file->max_job_size);
+
   // First job is special because we don't have to decompress
   cram_job_t first_job;
-  cram_file_next_job(file);
-  cram_read_job(file->cur_job_record, NULL, &first_job);
+  cram_file_next_job(file, job_record);
+  cram_job_decompress(job_record, NULL, &first_job);
 
   // print first job
   printf("Job %d:\n", file->cur_job_id);
@@ -390,8 +478,8 @@ void cram_file_cat(cram_file_t *file) {
   // Rest of jobs are based on first job.
   cram_job_t job;
   while (cram_file_has_more_jobs(file)) {
-    cram_file_next_job(file);
-    cram_read_job(file->cur_job_record, &first_job, &job);
+    cram_file_next_job(file, job_record);
+    cram_job_decompress(job_record, &first_job, &job);
 
     // print each subsequent job
     printf("Job %d:\n", file->cur_job_id);
@@ -400,5 +488,6 @@ void cram_file_cat(cram_file_t *file) {
     cram_job_free(&job);
   }
 
+  free(job_record);
   cram_job_free(&first_job);
 }

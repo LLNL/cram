@@ -11,7 +11,8 @@ endfunction()
 # Cram test executables
 #
 add_cram_test(cram-cat cram-cat.c)
-add_cram_test(cram-test-program cram-test-program.c)
+add_cram_test(cram-test cram-test.c)
+install(TARGETS cram-test DESTINATION libexec/cram)
 
 # This test runs a bash script to compare cram-cat output with cram info output.
 add_test(cram-io-test

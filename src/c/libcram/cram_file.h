@@ -23,7 +23,6 @@ struct cram_file_t {
   int max_job_size;        //!< Size of largest job record in this file.
   FILE *fd;                //!< C file pointer for the cram file.
 
-  char *cur_job_record;    //!< Last raw, compressed job record we read in.
   int cur_job_record_size; //!< Size of the current job record
   int cur_job_procs;       //!< Number of proceses in the current job.
   int cur_job_id;          //!< Id of the current job.
@@ -83,23 +82,51 @@ bool cram_file_has_more_jobs(const cram_file_t *file);
 
 
 ///
-/// Read the next job into the cur_job buffer and update cur_job_size.
+/// Read the next job into the job_record buffer.  Metadata about
+/// the job can be found in the file buffer after this call.
 ///
 /// Return true if successful, false on error.
 ///
-/// @param[in]    file   Cram file to advance.
+/// @param[in]    file        Cram file to advance.
+/// @param[out]   job_record  Buffer to store uncompressed bytes in.
 ///
-bool cram_file_next_job(cram_file_t *file);
+/// Job record should be of size file->max_job_record.
+///
+bool cram_file_next_job(cram_file_t *file, char *job_record);
 
 
 ///
-/// Read an entire job record out of a cram file, starting at the supplied
-/// offset.
+/// Broadcast a local cram file to all processes on a communicator.
+/// This is a collective operation.
+///
+/// @param[in]  file   File to broadcast jobs from.  Should be newly opened.
+/// @param[in]  root   Rank where the file is valid (i.e. root of bcast).
+/// @param[out] job    The job this process should execute.
+/// @param[out] id     Unique id for this process's job (use it to split world)
+/// @param[in]  comm   Communicator on which file should be bcast.
+///
+EXTERN_C
+void cram_file_bcast_jobs(cram_file_t *file, int root, cram_job_t *job, int *id,
+                          MPI_Comm comm);
+
+
+///
+/// Write out entire contents of cram file to the supplied file descriptor.
+/// After this operation the cram file is completely read.
+///
+/// @param[in] file   A cram file.
+///
+EXTERN_C
+void cram_file_cat(cram_file_t *file);
+
+
+///
+/// Decompress raw bytes from a job record into a cram_job_decompress.
 ///
 /// For the first job in a cram file, supply NULL for base.  Subsequent jobs
 /// have their environment compressed by comparing it to the first job's
-/// environment.  For these jobs, pass a reference to the base job so that they
-/// can be created by applying differences to the base.
+/// environment.  For these jobs, pass in a pointer to the base job so that
+/// this function can apply differences to the first job.
 ///
 /// @param[in]  job_record  Compressed job record from a cram file.
 /// @param[in]  offset      Offset in file.
@@ -107,34 +134,8 @@ bool cram_file_next_job(cram_file_t *file);
 ///                         read the first job out of the file.
 ///
 EXTERN_C
-void cram_read_job(const char *job_record,
-                   const cram_job_t *base, cram_job_t *job);
-
-
-///
-/// Broadcast a local cram file to all processes on a communicator.
-/// This is a collective operation.
-///
-/// @param[inout] file   Broadcast file buffer.
-/// @param[in]    root   Root rank of the broadcast.
-/// @param[in]    comm   Communicator on which file should be bcast.
-///
-EXTERN_C
-void cram_file_bcast(cram_file_t *file, int root, MPI_Comm comm);
-
-
-///
-/// Map a cram file into memory and bcast it to all processes on the supplied
-/// communicator. This is a combination of cram_file_open and cram_file_bcast.
-///
-/// @param[in]    filename   Name of file to open
-/// @param[inout] file       Descriptor for the mapped cram file.
-/// @param[in]    root       Root rank for the bcast
-/// @param[in]    comm       Communicator to bcast on.
-///
-EXTERN_C
-void cram_file_open_bcast(const char *filename, cram_file_t *file, int root,
-                          MPI_Comm comm);
+void cram_job_decompress(const char *job_record,
+                         const cram_job_t *base, cram_job_t *job);
 
 
 ///
@@ -160,10 +161,13 @@ void cram_job_print(const cram_job_t *job);
 
 
 ///
-/// Write out entire contents of cram file to the supplied file descriptor.
+/// Deep copy one cram job into another.
+///
+/// @param[in]   src    Source job to copy from
+/// @param[out]  dest   Destination job to copy to
 ///
 EXTERN_C
-void cram_file_cat(cram_file_t *file);
+void cram_job_copy(const cram_job_t *src, cram_job_t *dest);
 
 
 ///

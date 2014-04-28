@@ -36,11 +36,8 @@ To read from a CramFile, use len and iterate:
       # do something with job
   cf.close()
 
-Or just index it:
-
-  cf = CramFile('file.cram')
-  job4 = cf[4]
-  cf.close()
+Like regular files, CramFiles do not support indexing.  To do that,
+read all jobs into a list first, then index the list.
 
 Here is the CramFile format.  '*' below means that the section can be
 repeated a variable number of times.
@@ -165,8 +162,8 @@ class CramFile(object):
            Opening a CramFile for writing will create a file with a
            simple header containing no jobs.
         """
-        # Jobs read in from the file.
-        self.jobs = []
+        # Save the first job from the file.
+        self.first_job = None
 
         self.mode = mode
         if mode not in ('r', 'w', 'a'):
@@ -253,7 +250,7 @@ class CramFile(object):
 
         # Compress using first dict
         missing, changed = compress(
-            self.jobs[0].env if self.jobs else {}, job.env)
+            self.first_job.env if self.first_job else {}, job.env)
 
         # Subtracted env var names
         size += write_int(self.stream, len(missing), 4)
@@ -287,7 +284,11 @@ class CramFile(object):
                 self.stream.seek(_max_job_offset)
                 write_int(self.stream, self.max_job_size, 4)
 
-        self.jobs.append(job)
+        # Discard all but hte first job after writing.  This conserves
+        # memory when writing cram files.
+        if not self.first_job:
+            self.first_job = Job(
+                job.num_procs, job.working_dir, list(job.args), job.env.copy())
 
 
     def pack(self, *args):
@@ -303,8 +304,7 @@ class CramFile(object):
 
 
     def _read_job(self):
-        """Read the next unread job out of the CramFile and append it to
-           self.jobs.
+        """Read the next job out of the CramFile.
 
            This is an internal method because it's used to load stuff
            that isn't already in memory.  Client code should use
@@ -347,39 +347,27 @@ class CramFile(object):
                             "Expected %d, found %d" % (job_bytes, actual_size))
 
         # Decompress using first dictionary
-        env = decompress(self.jobs[0].env if self.jobs else {},
+        env = decompress(self.first_job.env if self.first_job else {},
                          missing, changed)
 
-        self.jobs.append(Job(num_procs, working_dir, args, env))
-        return self.jobs[-1]
-
-
-    def __getitem__(self, index):
-        """Return the index-th job stored in this CramFile."""
-        if isinstance(index, slice):
-            upper_bound = index.stop
-        else:
-            upper_bound = index + 1
-
-        if self.mode == 'r':
-            while (len(self.jobs) < upper_bound and
-                   len(self.jobs) < self.num_jobs):
-                self._read_job()
-
-        return self.jobs[index]
+        job = Job(num_procs, working_dir, args, env)
+        if not self.first_job:
+            self.first_job = job
+        return job
 
 
     def __iter__(self):
         """Iterate over all jobs in the CramFile."""
-        for job in self.jobs:
-            yield job
+        if self.mode != 'r':
+            raise IOError("Cramfile is not opened for reading.")
 
-        while len(self.jobs) < self.num_jobs:
+        yield self.first_job
+        for i in xrange(1, self.num_jobs):
             yield self._read_job()
 
 
     def __len__(self):
-        """Number of jobs in the CramFile."""
+        """Number of jobs in the file."""
         return self.num_jobs
 
 

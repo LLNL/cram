@@ -73,7 +73,7 @@ class CramFileTest(unittest.TestCase):
                 self.assertEqual(cf.num_jobs, 1)
                 self.assertEqual(cf.num_procs, 64)
 
-                job = cf[0]
+                job = next(iter(cf))
                 self.assertEqual(num_procs,   job.num_procs)
                 self.assertEqual(working_dir, job.working_dir)
                 self.assertEqual(args,        job.args)

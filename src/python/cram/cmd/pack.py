@@ -22,5 +22,8 @@ def pack(parser, args):
     if not args.nprocs:
         tty.die("You must supply a number of processes to run with.")
 
+    if os.path.isdir(args.file):
+        tty.die("%s is a directory." % args.file)
+
     with closing(CramFile(args.file, 'a')) as cf:
         cf.pack(args.nprocs, os.getcwd(), args.command, os.environ)

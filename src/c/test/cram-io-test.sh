@@ -48,6 +48,12 @@ $cram pack -f test-cram.job -n 35 foo
 $cram info -a test-cram.job > cram-info.txt
 $bgq_run cram-cat test-cram.job > cram-cat.txt
 
+echo ===== CRAM INFO IS HERE ==================================
+cat cram-info.txt
+echo
+echo ===== CRAM CAT IS HERE ===================================
+cat cram-cat.txt
+
 diff=$(diff cram-info.txt cram-cat.txt)
 if [ ! -z "$diff" ]; then
     echo "FAILED"

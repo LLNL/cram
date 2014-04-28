@@ -19,11 +19,15 @@ def touch(path):
 
 
 def mkdirp(*paths):
+    """Python equivalent of mkdir -p: make directory and any parent directories,
+       and don't raise errors if any of these already exist."""
     for path in paths:
-        if not os.path.exists(path):
+        try:
             os.makedirs(path)
-        elif not os.path.isdir(path):
-            raise OSError(errno.EEXIST, "File alredy exists", path)
+        except OSError as exc:
+            if (not exc.errno == errno.EEXIST or
+                not os.path.isdir(path)):
+                raise
 
 
 def join_path(prefix, *args):
