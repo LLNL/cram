@@ -18,9 +18,12 @@ def add_prefix_to_path(pkg_name, *pkg_paths):
 
 def check_python_version(version_tuple):
     """Die if the python version isn't newer than version_tuple"""
-    if not sys.version_info[:2] >= version_tuple:
-        sys.exit("This script requires Python %s.  Version was %s."
-                 % (sys.version_info, '.'.join(version_tuple)))
+    sys_ver = sys.version_info[:len(version_tuple)]
+    if not sys_ver >= version_tuple:
+        print "Cramrequires Python %s, but this is Python %s." % (
+            '.'.join(str(v) for v in version_tuple),
+            '.'.join(str(v) for v in sys_ver))
+        sys.exit(1)
 
 
 import sys
