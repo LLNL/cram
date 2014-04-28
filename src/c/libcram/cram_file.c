@@ -108,7 +108,7 @@ static char *buf_read_string(const char *buf, size_t *offset) {
 
 bool cram_file_open(const char *filename, cram_file_t *file) {
   file->fd = fopen(filename, "r");
-  if (file->fd < 0) {
+  if (file->fd == NULL) {
     return false;
   }
 

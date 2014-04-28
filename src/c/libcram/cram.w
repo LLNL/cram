@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
+#include <string.h>
 #include <mpi.h>
 
 #include "cram_file.h"
@@ -56,9 +57,11 @@ static MPI_Comm local_world;
 
   if (rank == 0) {
     if (!cram_file_open(cram_filename, &cram_file)) {
-      fprintf(stderr, "Error: cram_file_open failed with error %d\n", errno);
+      fprintf(stderr, "Error: Failed to open cram file '%s'.\n", cram_filename);
+      fprintf(stderr, "%s\n", strerror(errno));
       PMPI_Abort(MPI_COMM_WORLD, errno);
     }
+
     fprintf(stderr,   " Splitting this MPI job into %d jobs.\n", cram_file.num_jobs);
     fprintf(stderr,   " This will use %d total processes.\n", cram_file.total_procs);
   }
