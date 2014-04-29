@@ -10,6 +10,10 @@ else()
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
 endif()
 
+# Add local module path with some add-ons
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
+include(StaticAndShared)
+
 # Required dependencies
 find_package(MPI REQUIRED)
 find_package(PythonInterp REQUIRED)
