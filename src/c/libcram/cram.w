@@ -70,13 +70,13 @@ static MPI_Comm local_world;
   cram_job_t cram_job;
   int job_id;
 
-  double start_time = MPI_Wtime();
+  double start_time = PMPI_Wtime();
   cram_file_bcast_jobs(&cram_file, 0, &cram_job, &job_id, MPI_COMM_WORLD);
-  double bcast_time = MPI_Wtime();
+  double bcast_time = PMPI_Wtime();
 
   // Use the job id to split MPI_COMM_WORLD.
   PMPI_Comm_split(MPI_COMM_WORLD, job_id, rank, &local_world);
-  double split_time = MPI_Wtime();
+  double split_time = PMPI_Wtime();
 
   // Throw away unneeded ranks.
   if (job_id == -1) {
@@ -87,7 +87,7 @@ static MPI_Comm local_world;
 
   // set up this job's environment based on the job descriptor.
   cram_job_setup(&cram_job, {{0}}, {{1}});
-  double setup_time = MPI_Wtime();
+  double setup_time = PMPI_Wtime();
 
   // Redirect I/O to a separate file for each cram job.
   // These files will be in the job's working directory.
@@ -103,7 +103,7 @@ static MPI_Comm local_world;
 
   // wait for lots of files to open.
   PMPI_Barrier(MPI_COMM_WORLD);
-  double freopen_time = MPI_Wtime();
+  double freopen_time = PMPI_Wtime();
 
   if (rank == 0) {
     fprintf(stderr,   "\n");
