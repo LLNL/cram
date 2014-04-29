@@ -1,0 +1,7 @@
+#!/bin/sh
+
+cmake \
+    -DCMAKE_INSTALL_PREFIX=/collab/usr/global/tools/cram/$SYS_TYPE/cram \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCMAKE_TOOLCHAIN_FILE=../cmake/Toolchain/BlueGeneQ-gnu.cmake \
+    ..
