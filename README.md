@@ -5,10 +5,6 @@ Runs many small MPI jobs inside one large MPI job.
 
 by Todd Gamblin, [tgamblin@llnl.gov](mailto:tgamblin@llnl.gov)
 
-This tool would have been called "Clowncar", but it was decided that
-it should have a more serious name.  Cram stands for "Clowncar Renamed
-to Appease Management".
-
 Overview
 -------------------------
 
@@ -42,6 +38,26 @@ application with `libcram.a`. Finally, you run your job like this:
     env CRAM_FILE=/path/to/cram.job srun -n 1048576 my_mpi_application
 
 That's it. The job launches, it splits itself into a million pieces.
+You'll see some output like this from your srun invocation if Cram
+is running properly:
+
+    ===========================================================
+     This job is running with Cram.
+
+     Splitting this MPI job into 1048576 jobs.
+     This will use  total processes.
+
+     Successfully set up job:
+       Job broadcast:   0.005161 sec
+       MPI_Comm_split:  0.001973 sec
+       Job broadcast:   0.078768 sec
+       File open:       0.700172 sec
+      --------------------------------------
+       Total:           0.786074 sec
+
+    ===========================================================
+
+
 Each runs independently of the others, generates its own output
 and error files, then terminates as it normally would.
 All you need to make sure of is that the final, large submitted job
@@ -254,3 +270,9 @@ get cross compilation working:
 If you want ot build with the GNU compilers, there is a
 `BlueGeneQ-gnu.cmake` toolchain file too.  This package supports
 parallel make, so you are free to use make -j<jobs> if you like.
+
+Other notes
+-------------------------
+This tool would have been called "Clowncar", but it was decided that
+it should have a more serious name.  Cram stands for "Clowncar Renamed
+to Appease Management".
