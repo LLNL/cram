@@ -27,6 +27,9 @@
 // max concurrent ranks to send job records to at once.
 #define MAX_CONCURRENT_PEERS 512
 
+// Ideal number of bytes to use for Lustre read buffers: 2MB.
+#define LUSTRE_BUFFER_SIZE 2097152
+
 // ------------------------------------------------------------------------
 // Utility functions
 // ------------------------------------------------------------------------
@@ -102,6 +105,32 @@ static char *buf_read_string(const char *buf, size_t *offset) {
 }
 
 
+static size_t get_cram_buffer_size() {
+  const char *bufsize_string = getenv("CRAM_BUFFER_SIZE");
+  if (!bufsize_string) {
+    return LUSTRE_BUFFER_SIZE;
+  }
+
+  int rank;
+  PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+  char *endptr;
+  size_t bufsize = strtoll(bufsize_string, &endptr, 10);
+  if (*bufsize_string && *endptr == '\0') {
+    if (rank == 0) {
+      fprintf(stderr, "Using CRAM_BUFFER_SIZE=%d.\n", bufsize);
+    }
+    return bufsize;
+  } else {
+    if (rank == 0) {
+      fprintf(stderr, "Warning: Invalid value for CRAM_BUFFER_SIZE: %s.  "
+              "Using default of %d", bufsize_string, LUSTRE_BUFFER_SIZE);
+    }
+    return LUSTRE_BUFFER_SIZE;
+  }
+}
+
+
 // ------------------------------------------------------------------------
 // Public cram file interface
 // ------------------------------------------------------------------------
@@ -112,12 +141,17 @@ bool cram_file_open(const char *filename, cram_file_t *file) {
     return false;
   }
 
+  // Try to use a large buffer to read the file fast.
+  setvbuf(file->fd, NULL, _IOFBF, get_cram_buffer_size());
+
+  // check magic number at start of header
   int magic = file_read_int(file);
   if (magic != MAGIC) {
     fprintf(stderr, "Error: %s is not a cram file!", filename);
     return false;
   }
 
+  // read rest of header after magic check.
   file->version      = file_read_int(file);
   file->num_jobs     = file_read_int(file);
   file->total_procs  = file_read_int(file);
@@ -344,7 +378,7 @@ void cram_file_bcast_jobs(cram_file_t *file, int root, cram_job_t *job, int *id,
       }
 
       // array of requests for all sends we'll do
-      // max concurrent sends is really max number of ranks we'll send to at once.
+      // max concurrent peers max number of ranks we'll send to at once.
       int max_requests = MAX_CONCURRENT_PEERS * 2;
       MPI_Request requests[max_requests];
 

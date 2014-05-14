@@ -10,6 +10,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Usage: cram-cat <cramfile>\n");
     fprintf(stderr, "  Prints out the entire contents of a cram file "
             "as cram info would.\n");
+    exit(1);
   }
   const char *filename = argv[1];
 
