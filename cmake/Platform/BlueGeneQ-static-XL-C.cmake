@@ -13,4 +13,4 @@
 # (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
-__BlueGeneQ_set_static_flags(XL C)
+__BlueGeneQ_setup_static(XL C)

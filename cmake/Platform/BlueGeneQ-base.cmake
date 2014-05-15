@@ -19,44 +19,16 @@
 # NOTE: Do not set your platform to "BlueGeneQ-base".  This file is included
 # by the real platform files.  Use one of these two platforms instead:
 #
-#     BlueGeneQ-dynamic  For dynamically linked builds
-#     BlueGeneQ-static   For statically linked builds
+#     BlueGeneQ-dynamic  For dynamically linked executables
+#     BlueGeneQ-static   For statically linked executables
+#
+# The platform you choose doesn't affect whether or not you can build
+# shared or static libraries -- it ONLY changs whether exeuatbles are linked
+# statically or dynamically.
 #
 # This platform file tries its best to adhere to the behavior of the MPI
 # compiler wrappers included with the latest BG/P drivers.
 #
-
-#
-# For BGQ builds, we're cross compiling, but we don't want to re-root things
-# (e.g. with CMAKE_FIND_ROOT_PATH) because users may have libraries anywhere on
-# the shared filesystems, and this may lie outside the root.  Instead, we set the
-# system directories so that the various system BGP CNK library locations are
-# searched first.  This is not the clearest thing in the world, given IBM's driver
-# layout, but this should cover all the standard ones.
-#
-macro(__BlueGeneQ_set_system_lib_path compiler_id)
-  # Need to use the version of the comm lib compiled with the right compiler.
-  set(BGQ_COMMLIB_DIR gnu)
-  if (${compiler_id} STREQUAL XL)
-    set(BGQ_COMMLIB_DIR xl)
-  endif()
-
-  set(CMAKE_SYSTEM_LIBRARY_PATH
-    /bgsys/drivers/ppcfloor/comm/default/lib                  # default comm layer (used by mpi compiler wrappers)
-    /bgsys/drivers/ppcfloor/comm/${BGQ_COMMLIB_DIR}/lib       # PAMI, other lower-level comm libraries
-    /bgsys/drivers/ppcfloor/gnu-linux/lib                     # CNK python installation directory
-    /bgsys/drivers/ppcfloor/gnu-linux/powerpc64-bgq-linux/lib # CNK Linux image -- standard runtime libs, pthread, etc.
-    )
-endmacro()
-
-# Add all the system include paths.
-set(CMAKE_SYSTEM_INCLUDE_PATH
-  /bgsys/drivers/ppcfloor/comm/sys/include
-  /bgsys/drivers/ppcfloor/
-  /bgsys/drivers/ppcfloor/spi/include
-  /bgsys/drivers/ppcfloor/spi/include/kernel/cnk
-  /bgsys/drivers/ppcfloor/comm/gcc/include
-)
 
 #
 # This adds directories that find commands should specifically ignore for cross compiles.
@@ -93,8 +65,44 @@ set(CMAKE_EXECUTABLE_SUFFIX "")            # .exe
 
 set(CMAKE_DL_LIBS "dl")
 
+#
+# BG/Q supports dynamic libraries regardless of whether we're building
+# static or dynamic *executables*.
+#
+set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
+set(CMAKE_FIND_LIBRARY_PREFIXES "lib")
 
-macro(__BlueGeneQ_set_common_flags)
+#
+# For BGQ builds, we're cross compiling, but we don't want to re-root things
+# (e.g. with CMAKE_FIND_ROOT_PATH) because users may have libraries anywhere on
+# the shared filesystems, and this may lie outside the root.  Instead, we set the
+# system directories so that the various system BG CNK library locations are
+# searched first.  This is not the clearest thing in the world, given IBM's driver
+# layout, but this should cover all the standard ones.
+#
+macro(__BlueGeneQ_common_setup compiler_id lang)
+  # Need to use the version of the comm lib compiled with the right compiler.
+  set(__BlueGeneQ_commlib_dir gcc)
+  if (${compiler_id} STREQUAL XL)
+    set(__BlueGeneQ_commlib_dir xl)
+  endif()
+
+  set(CMAKE_SYSTEM_LIBRARY_PATH
+    /bgsys/drivers/ppcfloor/comm/default/lib                    # default comm layer (used by mpi compiler wrappers)
+    /bgsys/drivers/ppcfloor/comm/${__BlueGeneQ_commlib_dir}/lib # PAMI, other lower-level comm libraries
+    /bgsys/drivers/ppcfloor/gnu-linux/lib                       # CNK python installation directory
+    /bgsys/drivers/ppcfloor/gnu-linux/powerpc64-bgq-linux/lib   # CNK Linux image -- standard runtime libs, pthread, etc.
+    )
+
+  # Add all the system include paths.
+  set(CMAKE_SYSTEM_INCLUDE_PATH
+    /bgsys/drivers/ppcfloor/comm/sys/include
+    /bgsys/drivers/ppcfloor/
+    /bgsys/drivers/ppcfloor/spi/include
+    /bgsys/drivers/ppcfloor/spi/include/kernel/cnk
+    /bgsys/drivers/ppcfloor/comm/${__BlueGeneQ_commlib_dir}/include
+    )
+
   # Ensure that the system directories are included with the regular compilers, as users will expect this
   # to do the same thing as the MPI compilers, which add these flags.
   set(BGQ_SYSTEM_INCLUDES "")
@@ -103,27 +111,21 @@ macro(__BlueGeneQ_set_common_flags)
   endforeach()
   set(CMAKE_C_COMPILE_OBJECT   "<CMAKE_C_COMPILER>   <DEFINES> ${BGQ_SYSTEM_INCLUDES} <FLAGS> -o <OBJECT> -c <SOURCE>")
   set(CMAKE_CXX_COMPILE_OBJECT "<CMAKE_CXX_COMPILER> <DEFINES> ${BGQ_SYSTEM_INCLUDES} <FLAGS> -o <OBJECT> -c <SOURCE>")
-endmacro()
 
-#
-# This macro needs to be called for dynamic library support.  Unfortunately on BGP,
-# We can't support both static and dynamic links in the same platform file.  The
-# dynamic link platform file needs to call this explicitly to set up dynamic linking.
-#
-macro(__BlueGeneQ_set_dynamic_flags compiler_id lang)
-  __BlueGeneQ_set_system_lib_path(${compiler_id})
-  __BlueGeneQ_set_common_flags()
-
+  #
+  # Code below does setup for shared libraries.  That this is done
+  # regardless of whether the platform is static or dynamic -- you can make
+  # shared libraries even if you intend to make static executables, you just
+  # can't make a dynamic executable if you use the static platform file.
+  #
   if (${compiler_id} STREQUAL XL)
     # Flags for XL compilers if we explicitly detected XL
     set(CMAKE_SHARED_LIBRARY_${lang}_FLAGS           "-qpic")
     set(CMAKE_SHARED_LIBRARY_CREATE_${lang}_FLAGS    "-qmkshrobj -qnostaticlink")
-    set(BGQ_${lang}_DYNAMIC_EXE_FLAGS                "-qnostaticlink -qnostaticlink=libgcc")
   else()
     # Assume flags for GNU compilers (if the ID is GNU *or* anything else).
     set(CMAKE_SHARED_LIBRARY_${lang}_FLAGS           "-fPIC")
     set(CMAKE_SHARED_LIBRARY_CREATE_${lang}_FLAGS    "-shared")
-    set(BGQ_${lang}_DYNAMIC_EXE_FLAGS                "-dynamic")
   endif()
 
   # Both toolchains use the GNU linker on BG/P, so these options are shared.
@@ -134,6 +136,25 @@ macro(__BlueGeneQ_set_dynamic_flags compiler_id lang)
   set(CMAKE_SHARED_LIBRARY_LINK_${lang}_FLAGS        "")  # +s, flag for exe link to use shared lib
   set(CMAKE_SHARED_LIBRARY_RUNTIME_${lang}_FLAG_SEP  ":") # : or empty
 
+endmacro()
+
+#
+# This macro needs to be called for dynamic library support.  Unfortunately on BG,
+# We can't support both static and dynamic links in the same platform file.  The
+# dynamic link platform file needs to call this explicitly to set up dynamic linking.
+#
+macro(__BlueGeneQ_setup_dynamic compiler_id lang)
+  __BlueGeneQ_common_setup(${compiler_id} ${lang})
+
+  message("rpath link: ${CMAKE_SHARED_LIBRARY_RPATH_LINK_${lang}_FLAG}")
+
+  if (${compiler_id} STREQUAL XL)
+    set(BGQ_${lang}_DYNAMIC_EXE_FLAGS "-qnostaticlink -qnostaticlink=libgcc")
+  else()
+    set(BGQ_${lang}_DYNAMIC_EXE_FLAGS "-dynamic")
+  endif()
+
+  # For dynamic executables, need to provide special BG/Q arguments.
   set(BGQ_${lang}_DEFAULT_EXE_FLAGS
     "<FLAGS> <CMAKE_${lang}_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>")
   set(CMAKE_${lang}_LINK_EXECUTABLE
@@ -144,13 +165,12 @@ endmacro()
 # This macro needs to be called for static builds.  Right now it just adds -Wl,-relax
 # to the link line.
 #
-macro(__BlueGeneQ_set_static_flags compiler_id lang)
-  __BlueGeneQ_set_system_lib_path(${compiler_id})
-  __BlueGeneQ_set_common_flags()
+macro(__BlueGeneQ_setup_static compiler_id lang)
+  __BlueGeneQ_common_setup(${compiler_id} ${lang})
 
+  # For static executables, use default link settings.
   set(BGQ_${lang}_DEFAULT_EXE_FLAGS
     "<FLAGS> <CMAKE_${lang}_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>")
   set(CMAKE_${lang}_LINK_EXECUTABLE
     "<CMAKE_${lang}_COMPILER> -Wl,-relax ${BGQ_${lang}_DEFAULT_EXE_FLAGS}")
 endmacro()
-

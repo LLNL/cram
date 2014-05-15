@@ -13,4 +13,4 @@
 # (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
-__BlueGeneQ_set_dynamic_flags(GNU Fortran)
+__BlueGeneQ_setup_dynamic(GNU Fortran)

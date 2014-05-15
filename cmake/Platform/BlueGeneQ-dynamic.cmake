@@ -14,6 +14,4 @@
 #  License text for the above reference.)
 
 include(Platform/BlueGeneQ-base)
-set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
-set(CMAKE_FIND_LIBRARY_PREFIXES "lib")
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")
