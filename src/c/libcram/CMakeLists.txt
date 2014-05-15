@@ -6,4 +6,4 @@ add_static_and_shared_library(cram ${CRAM_SOURCES})
 include_directories(${MPI_C_INCLUDE_PATH}
   ${PROJECT_SOURCE_DIR}/src/c/libcram)
 
-install(TARGETS cram DESTINATION lib)
+install(TARGETS cram cram_static DESTINATION lib)
