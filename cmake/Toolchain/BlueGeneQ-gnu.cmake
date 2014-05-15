@@ -1,6 +1,10 @@
 # Need this first to ensure that we include custom platform files.
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 
+# Avoid warnings about duplicated platform files if CMake already has them.
+cmake_policy(SET CMP0011 NEW)
+cmake_policy(SET CMP0017 NEW)
+
 # the name of the target operating system
 set(CMAKE_SYSTEM_NAME BlueGeneQ-dynamic)
 

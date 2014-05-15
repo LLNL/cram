@@ -146,8 +146,6 @@ endmacro()
 macro(__BlueGeneQ_setup_dynamic compiler_id lang)
   __BlueGeneQ_common_setup(${compiler_id} ${lang})
 
-  message("rpath link: ${CMAKE_SHARED_LIBRARY_RPATH_LINK_${lang}_FLAG}")
-
   if (${compiler_id} STREQUAL XL)
     set(BGQ_${lang}_DYNAMIC_EXE_FLAGS "-qnostaticlink -qnostaticlink=libgcc")
   else()
