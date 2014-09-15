@@ -32,8 +32,13 @@ one large submission.  You use Cram like this:
     cram pack -f cram.job -n 1 my_mpi_application input.1048576.txt
 
 This packs all those job invocations into a file called `cram.job`,
-and saves them for one big submission.  To use the file, you link your
-application with `libcram.a`. Finally, you run your job like this:
+and saves them for one big submission.
+
+To use the file, either:
+   * Link your application with `libcram.a` if you are using C/C++.
+   * Link your application with `libfcram.a` if you are using Fortran.
+
+Then, run your job like this:
 
     env CRAM_FILE=/path/to/cram.job srun -n 1048576 my_mpi_application
 
@@ -57,7 +62,6 @@ is running properly:
 
     ===========================================================
 
-
 Each runs independently of the others, generates its own output
 and error files, then terminates as it normally would.
 All you need to make sure of is that the final, large submitted job
@@ -69,8 +73,13 @@ When the job completes, you should see output files like this:
     cram.0.err   cram.2.out    cram.3.err   cram.5.out   ... etc ...
     cram.1.out   cram.2.err    cram.4.out   cram.5.err
 
-If the jobs each had different working directories, then these files will
-appear in the working directories.
+If the jobs in your cram file had different working directories, then
+these files will appear in the working directories.
+
+**NOTE:** By default, only rank 0 in each job in your cram file will write
+to the output and error files.  If you don't like this, Cram has other
+options for output handling.  See **Output Options** below for more on this.
+
 
 
 Setup
@@ -91,8 +100,8 @@ you.  You can use this to locate `libcram.a`:
 That's the library you want to link your application with before you
 submit your large job.
 
-If you're on a machine where Cram isn't installed yet, see [Build &
-Install](#Build & Install) to build your own.
+If you're on a machine where Cram isn't installed yet, see
+**Build & Install** below to build your own.
 
 Command Reference
 -------------------------
@@ -230,6 +239,49 @@ different user-specific scratch directories:
         args = ["input.%08d" % i]
         cf.pack(1, '/home/%s/ensemble/run-%08d' % (user, i), args, env)
     cf.close()
+
+
+Output Options
+-------------------------
+By default, Cram will redirect the `stdout` and `stderr` streams to
+`cram.<jobid>.out` and  `cram.<jobid>.err` ONLY for rank 0 of each
+cram job.  Other processes have their output and error redirected to
+`/dev/null`.  You can control this behavior using the `CRAM_OUTPUT`
+environment variable.  The options are:
+
+  * `NONE`: No output.  All processes redirecto to `/dev/null`.
+  * `RANK0`: Default behavior.  Rank 0 writes to `cram.<jobid>.out`
+     and `cram.<jobid>.err`.  All other processes write to `/dev/null`.
+  * `ALL`: All processes write to unique files. e.g., rank 4 in job 1 writes to
+    `cram.1.4.out` and `cram.4.1.err`.
+  * `SYSTEM`: Ouptut is not redirected and system defaults are used.
+
+To set a particular output mode, set the `CRAM_OUTPUT` environment
+variable to one of the above values when you run.  For example, to
+make every process write an output and error file, you would run like
+this:
+
+    env CRAM_OUTPUT=ALL CRAM_FILE=/path/to/cram.job srun -n 1048576 my_mpi_application
+
+
+Error reporting
+-------------------------
+You may notice that in the `NONE` and `RANK0` modes, some processes
+don't have a place to report errors.  Cram tries its best to report
+errors regardless of the output mode the user has chosen.
+
+In particular, it tries to report non-zero `exit()` calls and
+segmentation faults (`SIGSEGV`) even if not every process has an
+output file.
+
+To do this, Cram will write error messages to the original error
+stream in all modes except `ALL`.  So, if a process dies or exits,
+you'll see a message like this print out to the console:
+
+    Rank 1 on cram job 4 died with signal 11.
+
+If you are running in `ALL` mode, Cram will print error messages like
+this out to the per-process `cram.<job>.<rank>.err` file.
 
 
 Build & Install

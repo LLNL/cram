@@ -1,4 +1,4 @@
-project(Cram C)
+project(Cram C Fortran)
 cmake_minimum_required(VERSION 2.8)
 
 # Use C99

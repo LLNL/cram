@@ -146,7 +146,7 @@ void cram_job_decompress(const char *job_record,
 /// 3. Set environment variables per those defined in the job.
 ///
 EXTERN_C
-void cram_job_setup(const cram_job_t *job, int *argc, char ***argv);
+void cram_job_setup(const cram_job_t *job, int *argc, const char ***argv);
 
 
 ///

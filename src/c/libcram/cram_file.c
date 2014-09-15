@@ -31,6 +31,13 @@
 #define LUSTRE_BUFFER_SIZE 2097152
 
 // ------------------------------------------------------------------------
+// Globals used by fortran arg routines
+// ------------------------------------------------------------------------
+int cram_argc = 0;
+const char **cram_argv = NULL;
+
+
+// ------------------------------------------------------------------------
 // Utility functions
 // ------------------------------------------------------------------------
 
@@ -426,17 +433,26 @@ void cram_file_bcast_jobs(cram_file_t *file, int root, cram_job_t *job, int *id,
 }
 
 
-void cram_job_setup(const cram_job_t *job, int *argc, char ***argv) {
+static void arg_copy(const cram_job_t *job,
+                     int *dest_argc, const char ***dest_argv) {
+
+    *dest_argc = job->num_args;
+    *dest_argv = malloc(job->num_args * sizeof(char**));
+    for (int i=0; i < job->num_args; i++) {
+        (*dest_argv)[i] = strdup(job->args[i]);
+    }
+}
+
+
+void cram_job_setup(const cram_job_t *job, int *argc, const char ***argv) {
   // change working directory
   chdir(job->working_dir);
 
   // Replace command line arguments with those of the job.
-  // TODO: what to do with existing args?
-  *argc = job->num_args;
-  *argv = malloc(job->num_args * sizeof(char**));
-  for (int i=0; i < job->num_args; i++) {
-    (*argv)[i] = strdup(job->args[i]);
-  }
+  arg_copy(job, argc, argv);
+
+  // Also copy arguments into globals for Fortran arg interceptors to access.
+  arg_copy(job, &cram_argc, &cram_argv);
 
   // Set environment variables based on the job's key/val pairs.
   for (int i=0; i < job->num_env_vars; i++) {
