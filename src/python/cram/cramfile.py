@@ -71,6 +71,7 @@ Env vars are stored alternating keys and values, in sorted order by key.
 ========================================================================
 """
 import os
+import re
 
 from collections import defaultdict
 from contextlib import contextmanager, closing
@@ -136,7 +137,13 @@ class Job(object):
     def __init__(self, num_procs, working_dir, args, env):
         self.num_procs = num_procs
         self.working_dir = working_dir
+
+        # Be lenient about the args.  Let the user pass a string if he
+        # wants, and split it like the shell would do.
+        if isinstance(args, basestring):
+            args = re.split(r'\s+', args)
         self.args = args
+
         self.env = env
 
     def __eq__(self, other):
