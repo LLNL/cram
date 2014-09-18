@@ -26,9 +26,9 @@ def write_header(args, cf):
 
 def write_job_summary(args, cf):
     print "First %d job command lines:" % args.num_lines
-    jobs = iter(cf)
-    for i in range(args.num_lines):
-        job = next(jobs)
+
+    for i, job in enumerate(cf):
+        if i >= args.num_lines: break
         print "%5d  %5d procs    %s" % (i, job.num_procs, ' '.join(job.args))
 
 
