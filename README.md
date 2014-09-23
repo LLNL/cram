@@ -328,3 +328,12 @@ Other notes
 This tool would have been called "Clowncar", but it was decided that
 it should have a more serious name.  Cram stands for "Clowncar Renamed
 to Appease Management".
+
+
+References
+-------------------------
+
+[1] J. Gyllenhaal, T. Gamblin, A. Bertsch, and R. Musselman.
+[Enabling High Job Throughput for Uncertainty Quantification on BG/Q](http://spscicomp.org/wordpress/pages/enabling-high-job-throughput-for-uncertainty-quantification-on-bgq/). In _IBM HPC Systems Scientific Computing User Group (ScicomP’14)_, Chicago, IL, 2014.
+
+[2] J. Gyllenhaal, T. Gamblin, A. Bertsch, and R. Musselman. ["Cramming" Sequoia Full of Jobs for Uncertainty Quantification](http://nnsa.energy.gov/sites/default/files/nnsa/09-14-inlinefiles/2014-09-12%20ASC%20eNews%20-%20June%202014.pdf). In _ASC eNews Quarterly Newsletter_. June 2014.
