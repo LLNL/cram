@@ -1,0 +1,11 @@
+#!/bin/sh
+#
+# Makes a timestamped, commit-stamped archive of the current HEAD.
+# Author: Todd Gamblin
+#
+name=cram
+head=`git log -1 --format="%h" HEAD`
+dstamp=`git log -1 --format="%ct" HEAD | perl -MPOSIX -le 'print strftime "%F", localtime <STDIN>'`
+
+filename="${name}-${dstamp}-${head}"
+git archive --format=tar.gz --prefix="${filename}/" HEAD -o ${filename}.tar.gz

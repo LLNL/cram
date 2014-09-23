@@ -5,6 +5,9 @@ Runs many small MPI jobs inside one large MPI job.
 
 by Todd Gamblin, [tgamblin@llnl.gov](mailto:tgamblin@llnl.gov)
 
+Released under the GNU LGPL, `LLNL-CODE-661100`.  See the `LICENSE`
+file for details.
+
 Overview
 -------------------------
 
