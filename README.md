@@ -1,12 +1,15 @@
 Cram
 =========================
-
-Runs many small MPI jobs inside one large MPI job.
-
 by Todd Gamblin, [tgamblin@llnl.gov](mailto:tgamblin@llnl.gov)
+
+Cram runs many small MPI jobs inside one large MPI job.
 
 Released under the GNU LGPL, `LLNL-CODE-661100`.  See the `LICENSE`
 file for details.
+
+### Contributors
+John Gyllenhaal, [gyllen@llnl.gov](mailto:gyllen@llnl.gov)
+
 
 Overview
 -------------------------
