@@ -49,10 +49,13 @@ def write_header(args, cf):
 
 
 def write_job_summary(args, cf):
-    print "First %d job command lines:" % args.num_lines
+    print "Job command lines:"
 
     for i, job in enumerate(cf):
-        if i >= args.num_lines: break
+        if i >= args.num_lines:
+            print " ..."
+            print " [%d more]" % (cf.num_jobs - i)
+            break
         print "%5d  %5d procs    %s" % (i, job.num_procs, ' '.join(job.args))
 
 
@@ -79,11 +82,14 @@ def info(parser, args):
                 print "Job %d:" % i
                 write_job_info(job)
 
-        elif args.job:
-            if args.job not in range(len(cf)):
+        elif args.job is not None:
+            if args.job < 0 or args.job >= len(cf):
                 tty.die("No job %d in this cram file." % args.job)
             print "Job %d:" % args.job
-            write_job_info(cf[args.job])
+            for i, job in enumerate(cf):
+                if i == args.job:
+                    write_job_info(job)
+                    break
 
         else:
             write_header(args, cf)

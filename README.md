@@ -149,7 +149,7 @@ There are three modes:
     Total Procs:                82
     Cram version:                1
 
-    First 10 job command lines:
+    Job command lines:
         0     35 procs    my_app foo bar 2 2 4
         1     35 procs    my_app foo bar 2 4 2
         2     12 procs    my_app foo bar 4 2 2
