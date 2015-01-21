@@ -97,7 +97,7 @@ def verify_test(test_dir):
             file_name,
             # regex with group         type  expected   error msg if not equal to expected
             (r'CRAM_JOB_ID=(\d+)',     int,  job_id,    "%s does not contain CRAM_JOB_ID=%d"),
-            (r'exe foo bar baz (\d+)', int,  job_id,    "%s does not contain args 'exe foo bar baz %d'"),
+            (r'foo bar baz (\d+)',     int,  job_id,    "%s does not contain args 'foo bar baz %d'"),
             (r'Job size: +(\d+)',      int,  job_size,  "%s has incorrect job size: %d"),
             (r'Real job size: +(\d+)', int,  num_procs, "%s has incorrect job size: %d"))
 

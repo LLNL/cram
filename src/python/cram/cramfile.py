@@ -116,6 +116,9 @@ _njobs_offset   = 8
 _nprocs_offset  = 12
 _max_job_offset = 16
 
+# Default name for cram executable.
+USE_APP_EXE = "<exe>"
+
 
 @contextmanager
 def save_position(stream):
@@ -159,6 +162,16 @@ class Job(object):
        later from within MPI.
     """
     def __init__(self, num_procs, working_dir, args, env):
+        """Construct a new Job object.
+
+        Arguments:
+        num_procs   -- number of processes to run on.
+        working_dir -- path to working directory for job.
+        args        -- sequence of arguments, INCLUDING the executable name.
+        env         -- dict containng environment.
+
+        """
+
         self.num_procs = num_procs
         self.working_dir = working_dir
 
@@ -170,11 +183,13 @@ class Job(object):
 
         self.env = env
 
+
     def __eq__(self, other):
         return (self.num_procs == other.num_procs and
                 self.working_dir == other.working_dir and
                 self.args == other.args and
                 self.env == other.env)
+
 
     def __ne__(self, other):
         return not (self == other)
@@ -322,16 +337,35 @@ class CramFile(object):
                 job.num_procs, job.working_dir, list(job.args), job.env.copy())
 
 
-    def pack(self, *args):
+    def pack(self, *args, **kwargs):
+        """Pack a Job into a cram file.
+
+        Takes either a Job object, or Job constructor params.
+        """
         if len(args) == 1:
             job = args[0]
             if not isinstance(job, Job):
                 raise TypeError(
-                    "Must pack a job or (nprocs, working_dir, args, env)")
+                    "Must pass a Job object, or (nprocs, working_dir, args, env)")
+            if kwargs:
+                raise TypeError("Cannot pass kwargs with cramfile.pack(Job)")
             self._pack(job)
 
         elif len(args) == 4:
-            self._pack(Job(*args))
+            nprocs, working_dir, args, env = args
+
+            # Split strings for the caller.
+            if isinstance(args, basestring):
+                args = re.split(r'\s+', args)
+
+            # By default, cram takes app's exe name.
+            exe = kwargs.pop('exe', USE_APP_EXE)
+            if kwargs:
+                raise ValueError("%s is an invalid keyword arg for this function!"
+                                 % next(iter(kwargs.keys())))
+
+            args = [exe] + list(args)
+            self._pack(Job(nprocs, working_dir, args, env))
 
 
     def _read_job(self):

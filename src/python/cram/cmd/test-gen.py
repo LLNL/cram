@@ -49,7 +49,7 @@ def make_test(num_procs, job_size, jobs_per_dir):
     cf = CramFile(cfname, 'w')
     for i, rank in enumerate(xrange(0, num_procs, job_size)):
         os.environ["CRAM_JOB_ID"] = str(i)
-        args = ['exe', 'foo', 'bar', 'baz', str(i)]
+        args = ['foo', 'bar', 'baz', str(i)]
 
         if i % jobs_per_dir == 0:
             wdir = "%s/wdir.%d" % (test_dir, i / jobs_per_dir)

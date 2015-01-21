@@ -35,13 +35,15 @@ def setup_parser(subparser):
                            help="Number of processes to run with")
     subparser.add_argument('-f', "--file", dest='file', default='cram.job', required=True,
                            help="File to store command invocation in.  Default is 'cram.job'")
-    subparser.add_argument('command', nargs=argparse.REMAINDER,
-                           help="Command line to execute.")
+    subparser.add_argument('-e', "--exe", dest='exe', default=USE_APP_EXE,
+                           help="Optionally specify the executable name for the cram job.")
+    subparser.add_argument('arguments', nargs=argparse.REMAINDER,
+                           help="Arguments to pass to executable.")
 
 
 def pack(parser, args):
-    if not args.command:
-        tty.die("You must supply a command line to cram pack.")
+    if not args.arguments:
+        tty.die("You must supply command line arguments to cram pack.")
 
     if not args.nprocs:
         tty.die("You must supply a number of processes to run with.")
@@ -50,4 +52,4 @@ def pack(parser, args):
         tty.die("%s is a directory." % args.file)
 
     with closing(CramFile(args.file, 'a')) as cf:
-        cf.pack(args.nprocs, os.getcwd(), args.command, os.environ)
+        cf.pack(args.nprocs, os.getcwd(), args.arguments, os.environ, exe=args.exe)

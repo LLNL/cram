@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <arpa/inet.h>
 
 #include "cram_file.h"
@@ -53,6 +54,10 @@
 
 // Ideal number of bytes to use for Lustre read buffers: 2MB.
 #define LUSTRE_BUFFER_SIZE 2097152
+
+// Default cram executable name: means we should use argv[0] for exe.
+#define CRAM_DEFAULT_EXE "<exe>"
+
 
 // ------------------------------------------------------------------------
 // Globals used by fortran arg routines
@@ -472,8 +477,22 @@ void cram_job_setup(const cram_job_t *job, int *argc, const char ***argv) {
   // change working directory
   chdir(job->working_dir);
 
+  // save argv[0] so that we can use it for the first arg.
+  const char *exe_name = NULL;
+  if (*argc > 0 && *argv) {
+    exe_name = (*argv)[0];
+  }
+
   // Replace command line arguments with those of the job.
   arg_copy(job, argc, argv);
+
+  // set argv[0] to the actual exe name
+  if (strcmp(job->args[0], CRAM_DEFAULT_EXE) == 0) {
+    if (exe_name) {
+      free((void*)(*argv)[0]);
+      (*argv)[0] = strdup(exe_name);
+    }
+  }
 
   // Also copy arguments into globals for Fortran arg interceptors to access.
   arg_copy(job, &cram_argc, &cram_argv);

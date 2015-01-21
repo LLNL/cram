@@ -32,10 +32,10 @@ OS's process limit.
 Cram fixes this problem by allowing you to lump all of those jobs into
 one large submission.  You use Cram like this:
 
-    cram pack -f cram.job -n 1 my_mpi_application input.1.txt
-    cram pack -f cram.job -n 1 my_mpi_application input.2.txt
+    cram pack -f cram.job -n 1 -e my_mpi_application input.1.txt
+    cram pack -f cram.job -n 1 -e my_mpi_application input.2.txt
     ...
-    cram pack -f cram.job -n 1 my_mpi_application input.1048576.txt
+    cram pack -f cram.job -n 1 -e my_mpi_application input.1048576.txt
 
 This packs all those job invocations into a file called `cram.job`,
 and saves them for one big submission.
@@ -91,8 +91,12 @@ options for output handling.  See **Output Options** below for more on this.
 Setup
 -------------------------
 
+This section covers how to use Cram at LLNL.  If you're at another
+site where Cram isn't installed yet, see **Build & Install**
+below to build your own.
+
 To run Cram, you need Python 2.7.  Python and cram are available
-through dotkits:
+at LLNL through dotkits:
 
     use python-2.7.3
     use cram
@@ -106,9 +110,6 @@ you.  You can use this to locate `libcram.a`:
 That's the library you want to link your application with before you
 submit your large job.
 
-If you're on a machine where Cram isn't installed yet, see
-**Build & Install** below to build your own.
-
 Command Reference
 -------------------------
 
@@ -121,7 +122,7 @@ many subcommands.  They're documented here.
 The most basic cram command -- this packs command line invocations
 into a file for batch submission.
 
-    Usage: cram pack [-h] -n NPROCS -f FILE ...
+    usage: cram pack [-h] -n NPROCS -f FILE [-e EXE] ..
 
 * `-n NPROCS`
   Number of processes this job should run with.
@@ -129,9 +130,16 @@ into a file for batch submission.
 * `-f FILE`
   File to store command invocation in.  Default is 'cram.job'
 
+* `-e EXE`
+
+  Optionally specify the executable name to use.  By default, when you
+  launch a cram job, The name of the launched binary is used
+  (`argv[0]`).  If you need to override this, you can supply -e with
+  an argument.
+
 * `...`
-  Command line of job to run, including the executable.  All command lines
-  packed into one cram file **must** use the same executable.
+  Command line arguments of the job to run, **not including the
+  executable**.
 
 ### cram info
 
@@ -225,7 +233,8 @@ an executable script like this one:
 
 This script will create a cram file, just like all those invocations
 of ``cram pack`` above, but it will run much faster because it runs in
-a single python session.
+a single python session.  Note that `CramFile.pack()` takes similar
+arguments as the `cram pack` command.
 
 Here's a more realistic one, for creating a million jobs with
 different user-specific scratch directories:
