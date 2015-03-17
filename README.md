@@ -1,15 +1,10 @@
 ![image](images/cram-logo.png) Cram
 =======================================
-by Todd Gamblin, [tgamblin@llnl.gov](mailto:tgamblin@llnl.gov)
 
 Cram runs many small MPI jobs inside one large MPI job.
 
 Released under the GNU LGPL, `LLNL-CODE-661100`.  See the `LICENSE`
 file for details.
-
-### Contributors
-John Gyllenhaal, [gyllen@llnl.gov](mailto:gyllen@llnl.gov)
-
 
 Overview
 -------------------------
@@ -343,6 +338,15 @@ Other notes
 This tool would have been called "Clowncar", but it was decided that
 it should have a more serious name.  Cram stands for "Clowncar Renamed
 to Appease Management".
+
+
+### Authors
+
+Cram was written by Todd Gamblin
+([tgamblin@llnl.gov](mailto:tgamblin@llnl.gov)).
+
+Many contributions, bugfixes, and testing were provided by John
+Gyllenhaal ([gyllen@llnl.gov](mailto:gyllen@llnl.gov)).
 
 
 References
