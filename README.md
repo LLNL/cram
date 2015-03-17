@@ -1,5 +1,5 @@
-Cram
-=========================
+![image](images/cram-logo.png) Cram
+=======================================
 by Todd Gamblin, [tgamblin@llnl.gov](mailto:tgamblin@llnl.gov)
 
 Cram runs many small MPI jobs inside one large MPI job.
